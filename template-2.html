@@ -1,0 +1,217 @@
+<!-- TEMPLATE 1 -->
+
+<%
+var queryStringJson = {
+  "side_text": _source.Id__default,
+  "entity_name": _source.record_id,
+  "record_summary": "'record_id:"+ _source.record_id +"'",
+  "record_transactions": "'record_id:"+ _source.record_id +"'",
+  "record_counterparties": "'record_id:"+ _source.record_id +"'",
+  "record_external": "'record_id:"+ _source.record_id +"'",
+  "record_id": _source.record_id,
+  "query_text": {
+    "queryType": "elasticsearch",
+    "queryText": `id:${"\"" + _source.Id__default + "\""}`
+  },
+  "entity_id": _source.Id__default
+}
+var queryString = encodeURIComponent(JSON.stringify(queryStringJson));
+%>
+    <div class="row">
+        <div class="col-sm-1" style="font-family: Verdana">
+            <div style="font-size: smaller">
+                <label>Record Id</label>
+            </div>
+            <div style="font-weight: bold">
+                <u><a href="#/record/redirect?query_string=<%= queryString %>">
+                    <%= _source.record_id %>
+                </a></u>
+            </div>
+        </div>
+        <!--<div class="col-sm-3" style="font-family: Verdana">-->
+        <!--    <div style="font-size: smaller">-->
+        <!--        <label>Record Name</label>-->
+        <!--    </div>-->
+        <!--    <div style="font-weight: bold">-->
+        <!--        <%= _source.MVL_SCNRO_DISPL_NM%>-->
+        <!--    </div>-->
+        <!--</div>-->
+        <div class="col-sm-3" style="font-family: Verdana">
+            <div style="font-size: smaller">
+                <label>Focal Entity</label>
+            </div>
+            <div style="font-weight: bold">
+                <%= _source.focal_name %>
+                <% if (_source.chinese_native_name !== "") { %>
+                  <br>
+                  <%= _source.chinese_native_name %>
+                <% } %>
+                <% if (_source.russian_native_name !== "") { %>
+                  <%= _source.russian_native_name %>
+                <% } %>
+            </div>
+        </div>
+        <div class="col-sm-1" style="font-family: Verdana">
+            <div style="font-size: smaller">
+                <label>Investigator</label>
+            </div>
+            <div style="font-weight: bold">
+                <%= _source.record_owner %>
+            </div>
+        </div>
+        <div class="col-sm-1" style="font-family: Verdana">
+            <div style="font-size: smaller">
+                <label>Status</label>
+            </div>
+            <div style="font-weight: bold">
+                <%= _source.record_status %>
+            </div>
+        </div>
+        <div class="col-sm-1" style="font-family: Verdana">
+            <div style="font-size: smaller">
+                <label>Record Date</label>
+            </div>
+            <div style="font-weight: bold">
+                 <%= _source.record_date %>
+            </div>
+        </div>
+        <div class="col-sm-1" style="font-family: Verdana">
+            <div style="font-size: smaller">
+                <label>Record Closure Risk</label>
+            </div>
+            <div style="font-weight: bold">
+                <% if (_source.record_risk_category <= 10 && _source.record_risk_category > 7) { %> 
+                  <span class="badge badge-danger" style=" border-radius:2px; margin-left:0; color:#fff; background-color:#dc3545; padding-bottom:4px; padding-top:3px;"><b>High</b></span> 
+                <% } else if (_source.record_risk_category <= 7 && _source.record_risk_category > 4) { %> 
+                  <span class="badge badge-warning" style=" border-radius:2px; margin-left:0; color:#202020; background-color:#ffc107; padding-bottom:4px; padding-top:3px;"><b>Medium</b></span> 
+                <% } else if(_source.record_risk_category <= 4) { %> 
+                  <span class="badge badge-success" style=" border-radius:2px; margin-left:0; color:#fff; background-color:#28a745; padding-bottom:4px; padding-top:3px;"><b>Low</b></span> 
+                <%  } %>
+            </div>
+        </div>
+      </div>
+
+      <!-- TEMPLATE 2 -->
+<%
+var queryStringJson = {
+    "side_text": _source.id,
+    "data_summary":  _source.id,
+    "external_sources": _source.id,
+    "entity_transactions": _source.id,
+    "query_text": {
+      "queryType": "elasticsearch",
+      "queryText": "id:" + _source.id
+    },
+    "entity_id": _source.id,
+    "id": _source.id
+  }
+  function toTitleCase(str) {
+        return str.replace(
+            /\w\S*/g,
+            function(txt) {
+                return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
+            }
+        );
+    }
+  var queryString = encodeURIComponent(JSON.stringify(queryStringJson));
+%>
+<%
+var ExportFields = ["name", "country", "client_flag"]
+%>
+<style type="text/css" >
+   .searchFilterResultRowInner {
+     display: block !important;
+   }
+</style>
+    <div class="row" style="display:block !important;flex:none; -ms-flex:none;width:100%" >
+        <div class="col-sm-3 col-lg-3" style="font-family: Verdana">
+            <div style="font-size: smaller">
+                <label>Entity</label>
+            </div>
+            <div style="font-weight: bold">
+                <a href=<%= "#/entities/redirect?query_string=" + queryString %> >
+                    <%= toTitleCase(_source.name) %>
+                </a>
+            </div>
+            <% if (_source.best_1_default_native_name !== "NULL") { %>
+              <div class="row" style="display:block !important;flex:none; -ms-flex:none;width:100%">
+                <div class="col-sm-12  col-lg-12" style="font-family: Verdana; padding-top:5px; margin-left:0">
+                  <%= _source.best_1_default_native_name %>
+                </div>
+               </div>
+            <% } %>
+        </div>
+        <div class="col-sm-2  col-lg-2" style="font-family: Verdana">
+            <div style="font-size: smaller">
+                <label>COUNTRY</label>
+            </div>
+            <div style="font-weight: bold">
+                <%= _source.country.toUpperCase() %>
+            </div>
+      </div>
+      <div class="col-sm-2  col-lg-2" style="font-family: Verdana">
+            <div style="font-size: smaller">
+                <label>Client Status</label>
+            </div>
+            <div style="font-weight: bold">
+                <% if (_source.client_flag == "yes") { %>
+                  <span class="badge badge-danger" style=" border-radius:2px; margin-left:0; color:#202020; background-color:#00ccff; padding-bottom:4px; padding-top:3px;">CLIENT</span>
+                <% } else if (_source.client_flag == "no") { %>
+                  <span class="badge badge-warning" style=" border-radius:2px; margin-left:0; color:#202020; background-color:#eee; padding-bottom:4px; padding-top:3px;">NON-CLIENT</span>
+                <% } %>
+            </div>
+        </div>
+      <div class="col-sm-2  col-lg-2" style="font-family: Verdana">
+            <div style="font-size: smaller">
+                <label>Aggregate Risk</label>
+            </div>
+            <div style="font-weight: bold">
+                <% if (_source.telescope_risk > 5 || _source.scope_risk < 5) { %>
+                  <span class="badge badge-danger" style=" border-radius:2px; margin-left:0; color:#fff; background-color:#dc3545; padding-bottom:4px; padding-top:3px;">High</span>
+                <% } else if (_source.telescope_risk <= 5 && _source.telescope_risk > 3) { %>
+                  <span class="badge badge-warning" style=" border-radius:2px; margin-left:0; color:#202020; background-color:#ffc107; padding-bottom:4px; padding-top:3px;">Medium</span>
+                <% } else if(_source.telescope_risk <= 3 || _source.scope_risk > 5) { %>
+                  <span class="badge badge-success" style=" border-radius:2px; margin-left:0; color:#fff; background-color:#28a745; padding-bottom:4px; padding-top:3px;">Low</span>
+                <%  } %>
+            </div>
+        </div>
+    </div>
+
+<!-- TEMPLATE-3 -->
+<% 
+var queryStringJson = {
+  "side_text": _source.Id_ref,
+  "entity_summary": "Id_ref:" + _source.Id_ref,
+  "faulty_key_to_fail_export": "Id_ref:" + _source.Id_ref,
+  "detailed_summary":  "Id_ref:" + _source.Id_ref
+}
+   function toTitleCase(str) {
+        return str.replace(
+            /\w\S*/g,
+            function(txt) {
+                return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
+            }
+        );
+    }
+var queryString = encodeURIComponent(JSON.stringify(queryStringJson));
+%>
+<div class="row">
+  <div class="col-sm-2" style="font-family: Verdana">
+    <div style="font-size: smaller"><label>Fund Name</label></div>
+       <div style="font-weight: bold"><a href="#/entity/redirect?query_string=<%= queryString %>">
+        <%= _.startCase(_source.rollUp_1_ref_name) %>
+    </a></div>
+  </div>
+<div class="col-sm-2" style="font-family: Verdana">
+    <div style="font-size: smaller"><label>CIK</label></div>
+    <div style="font-weight: bold">
+      <%= _source.rollUp_1_ref_cik %></div>
+  </div>
+  <div class="col-sm-2" style="font-family: Verdana">
+    <div style="font-size: smaller"><label>LEI</label></div>
+    <div style="font-weight: bold"><%= _source.ref_lei.toUpperCase() %></div>
+  </div>
+  <div class="col-sm-2" style="font-family: Verdana">
+    <div style="font-size: smaller"><label>Ticker</label></div>
+    <div style="font-weight: bold"><%= _source.rollUp_1_ref_ticker.toUpperCase() %></div>
+  </div>
