@@ -1,0 +1,16 @@
+#main{
+    display: flex;
+}
+#sideBar {
+    flex:1;
+    border: 1px solid black;
+}
+
+#tableContainer {
+    flex: 2;
+    border: 1px solid black;
+}
+td {
+    border: 1px solid black;
+    padding: 5px;
+}

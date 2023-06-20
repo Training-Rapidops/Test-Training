@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test1 - 3</title>
+</head>
+<body>
+    <script>
+         //--------------------------------------------Table Row And Colomn-----------------------------------------------------------------------
+        function createTable(n,m){
+            document.write("<table>");
+                for(let i = 0;i<n;i++){
+                    document.write("<tr>");
+                        for(let j = 0;j<m; j++){
+                            document.write("<td>");
+                                document.write(`&nbsp;Row-${i} Colomn-${j}&nbsp;`);
+                            document.write("</td>");
+                        }
+                    document.write("</tr>\n\n\n");
+                }
+
+            document.write("</table>");   
+        }
+        let row = +prompt("Enter no Of Rows", "4");
+        let colomn = +prompt("Enter no Of Colomns", "3");
+        createTable(row,colomn);
+    </script>
+</body>
+</html>

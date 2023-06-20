@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" integrity="sha384-rbsA2VBKQhggwzxH7pPCaAqO46MgnOM80zW1RWuH61DGLwZJEdK2Kadq2F9CUG65" crossorigin="anonymous">
+    <style>
+        .container{
+            /* align-self: center; */
+            margin: 10px auto;
+            width: fit-content;
+
+        }
+        .timedatediv{
+            display: flex;
+            flex-direction: row;
+            /* position: absolute; */
+            font-size: 26px;
+            /* border: 3px solid gray;
+            padding: 5px 30px; */
+            width: fit-content;
+        }
+        .timespn{
+            border: 3px solid gray;
+            padding: 5px 30px;
+            background-color: aliceblue ;
+            margin-right: 40px;
+        }
+        .datespn{
+            border: 3px solid gray;
+            padding: 5px 30px;
+            /* float: left; */
+            margin-left: 40px;
+            background-color: aliceblue ;
+        }
+    
+        .stopwatch{
+            display: block;
+            /* position: absolute; */
+            font-size: 26px;
+            margin: 10px;
+            display: block;
+            /* border: 3px solid gray; */
+            padding: 5px 30px;
+        }
+        .btns{
+            display: inline;
+            margin: 20px;
+        }
+        .btn{
+            margin: 20px;
+            width: 80px;
+        }
+        #stpwtc{
+            margin-left: 150px;
+        }
+    </style>
+    <title>Task 1 - StopWatch</title>
+</head>
+<body>
+    <div class="container">
+        <div class="timedatediv">
+            <span class="timespn">Time <span id="time"></span></span> 
+            <span class="datespn">Date <span id="date"></span></span> 
+        </div>
+        <br><br><br>
+        <div class="stopwatch">
+            StopWatch  
+            <span id="stpwtc">
+                <span id="hr">00</span>:<span id="min">00</span>:<span id="sec">00</span>:<span id="ml">00</span>
+            </span>
+        </div>
+        <div class="btns">
+            <button class="btn btn-success"id ="start">Start</button>
+            <button class="btn btn-danger" id="stop">Stop</button>
+            <button class="btn btn-warning" id="resume">Resume</button>
+            <button class="btn btn-info" id="reset">Reset</button>
+        </div>
+    </div>
+    <script>
+    //-----------------------------------------Time & Date-----------------------------------------------------------------------
+    function timedateShow(){
+        let mnth = ["Jan","Fab", "March", "Apr", "May","June", "July", "Aug", "Sept", "Oct", "Nov", "Dec"];
+        let dt = new Date();
+        let hh = dt.getHours();
+        let mm = dt.getMinutes();
+        let ss = dt.getSeconds();
+        hh = hh<10?"0"+hh:hh;
+        mm = mm<10?"0"+mm:mm;
+        ss = ss<10?"0"+ss:ss;
+        let time =  hh+":"+mm+":"+ss;
+        document.getElementById("time").innerHTML = `${time}`;
+        document.getElementById("date").innerHTML = `${dt.getDate()} ${mnth[+(dt.getMonth())]} ,${dt.getFullYear()}`;
+    }
+    setInterval(timedateShow,0);
+    // ----------------------------------------StopWatch------------------------------------------------------------------
+    function toStart(){
+        id = setInterval(()=>{
+            ml++;
+            ml = ml<10?"0"+ml:ml;
+            if(ml==999){
+                sec++;
+                sec = sec<10?"0"+sec:sec;
+                ml = "00";
+            }
+            if(sec==60){
+                min++;
+                min = min<10?"0"+min:min;
+                sec = "00"
+            }
+            if(min==60){
+                hr++;
+                hr = hr<10?"0"+hr:hr;
+                min = "00"
+            }
+            addTime();
+            document.getElementById("resume").addEventListener("click",toResume);
+        },0)
+    }
+    function toReset(){
+        clearInterval(id);
+        clearInterval(id2);
+        hr = "00";
+        min="00";
+        sec = "00"
+        ml = "00";
+        addTime();
+    }
+    function toResume(){
+        id2 = setInterval(()=>{
+            ml++;
+            ml = ml<10?"0"+ml:ml;
+            if(ml==999){
+                sec++;
+                sec = sec<10?"0"+sec:sec;
+                ml = "00";
+            }
+            if(sec==60){
+                min++;
+                min = min<10?"0"+min:min;
+                sec = "00"
+            }
+            if(min==60){
+                hr++;
+                hr = hr<10?"0"+hr:hr;
+                min = "00"
+            }
+            addTime();
+        },0)
+        
+    }
+    function toStop(){
+
+        clearInterval(id);
+        clearInterval(id2);
+    }
+    function addTime(){
+        document.getElementById("hr").innerHTML = hr;
+        document.getElementById("min").innerHTML = min;
+        document.getElementById("sec").innerHTML = sec;
+        document.getElementById("ml").innerHTML = ml=="00"?"00":ml%100;
+    }
+    let hr="00",min="00",sec="00",ml="00";
+    document.getElementById("start").addEventListener("click",toStart);
+    document.getElementById("stop").addEventListener("click",toStop);  
+    document.getElementById("reset").addEventListener("click", toReset);
+    </script>
+</body>
+</html>

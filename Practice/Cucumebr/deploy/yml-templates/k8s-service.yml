@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    component: apis
+    tier: apps
+  name: {{serviceName}}
+  namespace: {{namespace}}
+spec:
+  ports:
+    - name: http-{{serviceName}}
+      port: {{environmentVariables.NODE_PORT}}
+      protocol: TCP
+      targetPort: {{environmentVariables.NODE_PORT}}
+  selector:
+    app: {{name}}
+    component: apis
+    tier: apps
+  sessionAffinity: None
+  type: ClusterIP

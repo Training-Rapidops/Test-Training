@@ -1,0 +1,136 @@
+body{
+    /* background-color: gray; */
+    margin: 0px;
+    padding: 0px;
+    font-size: 14.35px;
+    font-family: "Open Sans", "Trebuchet MS", arial, verdana, sans-serif;
+}
+.hidden{
+    display: none !important;
+}
+header{
+    background: #000;
+    width: 100%;
+    margin: 0px;
+    padding: 0px;
+    /* display: inline-block; */
+    top: 0%;
+}
+nav{
+    display: flex;
+    flex-direction: row;
+    margin: auto;
+    width: 90%;
+   justify-content: space-between;
+   align-items: center;
+   padding: 0px;
+   height: 80px;
+}
+.logo > img{
+   max-width: 200px;
+}
+.course_catalog{
+    float: right;
+    font-size: 14.35px;
+    font-family: "Open Sans", "Trebuchet MS", arial, verdana, sans-serif;
+    color: white;
+}
+.course_catalog:hover{
+    color: gray    ;
+}
+a{
+    text-decoration: none;
+    
+}
+section.signupContainer{
+    display: block;
+    margin: 100px auto;
+    width: fit-content;
+    background-color: #000;
+    padding: 90px;
+    border-radius: 8px;
+}
+section.signupContainer>form{
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+.fname,.email,.lname,.createPass,.confirmPass{
+    display: flex;
+    flex-direction: column;
+}
+.fname>input,.lname>input,.email>input, .createPass>input,.confirmPass>input{
+    width: 400px;
+    height: 30px;
+    margin: 10px auto;
+}
+.passError,.emptyError,.alertmsg {
+    color: red;
+    font-size: 12px;
+}
+.signupbtn{
+    width: 413px;
+    height: 40px;
+    margin: 30px auto;
+    border-radius: 3px;
+    background-color: #003DE6;
+    cursor: pointer;
+  border-radius: 5px;
+  border: none;
+
+}
+.loginRedirect{
+    font-size: 17px;
+}
+a.loginRedirectLink{
+    font-size: 17px;
+    color: #0066FF;
+}
+a.loginRedirectLink:hover{
+    text-decoration: underline;
+}
+
+section.loginContainer{
+    display: block;
+    margin: 120px auto;
+    width: fit-content;
+    background-color: #000;
+    padding: 90px;
+    border-radius: 5px;
+}
+section.loginContainer>form{
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+.uname,.password{
+    display: flex;
+    flex-direction: column;
+}
+.uname>input , .password>input{
+    width: 400px;
+    height: 30px;
+    margin: 10px auto;
+}
+.loginbtn{
+    width: 413px;
+    height: 40px;
+    margin: 30px auto;
+    border-radius: 3px;
+    background-color: #003DE6;
+  border-radius: 5px;
+  border: none;
+
+}
+.forgotPass,.signupRedirectLink{
+    font-size: 17px;
+}
+a.forgotPassLink,a.signupRedirectLink{
+    font-size: 17px;
+    color: #0066FF;
+}
+a.forgotPassLink:hover,a.signupRedirectLink:hover{
+    text-decoration: underline;
+}

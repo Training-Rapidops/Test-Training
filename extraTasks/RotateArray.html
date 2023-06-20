@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <script>
+        function arrRoatate90(a){
+    let newarr = new Array(a.length);
+    for(i = 0; i<newarr.length; i++){
+        newarr[i] = new Array(a[i].length);
+        for(j = 0;j<newarr.length;j++){
+            newarr[i][j] = a[j][i];
+        }
+    }
+    // alert(newarr);
+    let temp;
+    for(c = 0;c<newarr.length;c++){
+        k = 0;
+        j = newarr[0].length-1;
+        while(k<j){
+            temp = newarr[c][j];
+            newarr[c][j] = newarr[c][k];
+            newarr[c][k] = temp;
+            // console.log(newarr[c][k]);
+            k++;
+            j--;
+        }
+    }                    
+    console.log(newarr);
+}
+let a = [
+    [1,2,3],
+    [4,5,6],
+    [7,8,9]
+    ];
+degree = +prompt("Enter Degree to Rotate", 90);
+if(degree%360==90){
+    arrRoatate90(a);
+}
+else if(degree%360 ==45){
+    arrRoatate45(a);
+}
+else{
+    alert("Enter 45 or 90 Degree Equivalant")
+}
+    </script>
+
+</body>
+</html>

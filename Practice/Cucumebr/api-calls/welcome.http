@@ -1,0 +1,13 @@
+# API to check service
+GET {{endpoint}}/
+Accept: application/json
+x-linkname: {{linkname}}
+accesstoken: {{accesstoken}}
+
+
+###
+# API to check health of service
+GET {{endpoint}}/health-check
+Accept: application/json
+x-linkname: {{linkname}}
+accesstoken: {{accesstoken}}

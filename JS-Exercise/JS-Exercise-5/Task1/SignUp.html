@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="./SignUpStyle.css">
+    <title>Task 1-LMS Website-SignUp</title>
+</head>
+
+<body>
+    <header>
+        <nav>
+            <a href="./SignUp.html" class="logo"><img src="./Rapidops_Logo.png" alt="Rapidops_Logo"></a>
+            <a href="http://" target="_blank" class="course_catalog" title="Course Catalog">COURSE CATALOG</a>
+        </nav>
+    </header>
+    <section class="signupContainer ">
+        <form id="signupForm">
+            <div class="emptyValAlert"><span id="emptyAlert" class="hidden">All Fields Must be Filled</span></div>
+            <div class="fname">
+                <label for="fname">FIRST NAME</label>
+                <input type="text" id="fname" name="fname">
+            </div>
+            <div class="lname">
+                <label for="lname">LAST NAME</label>
+                <input type="text" id="lname" name="lname">
+            </div>
+            <div class="email">
+                <label for="email">EMAIL ADDRESS</label>
+                <input type="email" id="email" name="email">
+            </div>
+            <div class="createPass">
+                <label for="createPass">CREATE PASSWORD</label>
+                <input type="password" name="createPass" id="createPass">
+            </div>
+            <div class="confirmPass">
+                <label for="confirmPass">CONFIRM PASSWORD</label>
+                <input type="password" name="confirmPass" id="confirmPass">
+                <span class="passError hidden">Your Password Must Contain lowercase, uppercase charecters and digit
+                    !!!</span><br>
+                <span class="emptyError hidden">Empty Field !!!</span>
+            </div>
+            <div class="isAdmin">
+                <input type="checkbox" name="isAdmin" id="isAdmin"><span> Are You Admin?</span>
+            </div>
+            <div class="signup">
+                <button class="signupbtn">Sign Up</button>
+            </div>
+            <div class="loginRedirect">Already Has Account? <a class="loginRedirectLink">Login</a>
+            </div>
+        </form>
+    </section>
+    <section class="loginContainer hidden">
+        <form>
+            <div class="uname">
+                <label for="uname">USERNAME OR EMAIL</label>
+                <input type="text" id="uname" name="uname">
+            </div>
+            <div class="password">
+                <label for="password">PASSWORD</label>
+                <input type="password" name="password" id="password">
+            </div>
+            <div class="login">
+                <button class="loginbtn" onclick="logInFunc">LogIn</button>
+            </div>
+            <div class="forgotPass">Forgot Your <a href="" class="forgotPassLink">Password</a>?</div>
+            <a class="signupRedirectLink">Sign Up</a>
+        </form>
+    </section>
+    <script>
+        // Signup Code
+        function signupProcess() {
+            //Add to local storage main function
+            function addStorage() {
+                if (checkAdmin.checked) {
+                    addStorageAdmin();
+                }
+                else {
+                    addStorageUser();
+                }
+            }
+
+            //Add to local Storage in User and Admin
+            function addStorageAdmin() {
+                let arr = []
+                if(!fname.value && !lname.value && !email.value && !confirmPass.value){
+                   let emptyAlert = document.getElementById(emptyAlert);
+                   emptyAlert.classList.remove("hidden"); 
+                }
+                if (localStorage.getItem("Admin") !== null) {
+                    arr = JSON.parse(localStorage.getItem("Admin"))
+                }
+                let obj = { fname: `${fname.value}`, lname: `${lname.value}`, email: `${email.value}`, password: `${confirmPass.value}`, admin: true };
+                arr.push(obj)
+                console.log(JSON.stringify(arr));
+                localStorage.setItem("Admin", JSON.stringify(arr));
+                gotoUserDash();
+            }
+            function addStorageUser() {
+                let arr = []
+
+                if (localStorage.getItem("user") !== null) {
+                    arr = JSON.parse(localStorage.getItem("user"))
+                }
+                let obj = { fname: `${fname.value}`, lname: `${lname.value}`, email: `${email.value}`, password: `${confirmPass.value}`, admin: false };
+                arr.push(obj)
+                console.log(JSON.stringify(arr));
+                localStorage.setItem("user", JSON.stringify(arr));
+                console.log()
+                gotoUserDash(user);
+            }
+
+            //validating Input Fields
+            function validate(ele) {
+                let val = ele.value;
+                let alert = document.createElement("span");
+                alert.classList.add("alertmsg", "hidden");
+                alert.innerHTML = "Enetr Some Value !!!";
+                ele.insertAdjacentElement("afterend", alert);
+                if (!val) {
+                    alert.classList.remove("hidden");
+                    setTimeout(function () {
+                        alert.classList.add("hidden");
+                    }, 3000)
+                }
+            }
+            // Login Redirect Code
+            function openLogin() {
+                let signupContainer = document.querySelector(".signupContainer");
+                let loginContainer = document.querySelector(".loginContainer");
+                signupContainer.classList.add("hidden");
+                loginContainer.classList.remove("hidden");
+
+                loginProcess();
+            }
+            let loginRedirect = document.querySelector(".loginRedirectLink");
+            loginRedirect.addEventListener("click", openLogin);
+
+            // SignUp redirect code
+            function openSignup() {
+                let signupContainer = document.querySelector(".signupContainer");
+                let loginContainer = document.querySelector(".loginContainer");
+                signupContainer.classList.remove("hidden");
+                loginContainer.classList.add("hidden");
+            }
+            let signupRedirect = document.querySelector(".signupRedirectLink");
+            signupRedirect.addEventListener("click", openSignup);
+
+            //User & Admin Dash board redirect code
+            function gotoUserDash(user) {
+                console.log(user)
+                let form = document.getElementById("signupForm");
+                let isAdmin = localStorage.valueOf(user);
+                if (isAdmin["admin"]) {
+                    form.setAttribute("action", "./AdminDashbord.html");
+                }
+                else {
+                    form.setAttribute("action", "./UserDashbord.html");
+                }
+            }
+
+            //Main Sign up Code
+            let i = 0;
+
+            let fname = document.getElementById("fname");
+            let lname = document.getElementById("lname");
+            let email = document.getElementById("email");
+            let createPass = document.getElementById("createPass");
+            let confirmPass = document.getElementById("confirmPass");
+            let signupbtn = document.querySelector(".signupbtn");
+
+            fname.addEventListener("focus", () => { validate(fname) });
+            lname.addEventListener("focus", () => { validate(lname) });
+            email.addEventListener("focus", () => { validate(email) });
+            createPass.addEventListener("focus", () => { validate(createPass) });
+
+            let checkAdmin = document.getElementById("isAdmin");
+
+            signupbtn.addEventListener("click", addStorage);
+
+        }
+        function loginProcess() {
+            let uname = document.getElementById("uname");
+            let pass = document.getElementById("password");
+            let storage = localStorage.valueOf("user");
+            let userStorage = JSON.parse(storage.user);
+            let AdminStorage = JSON.parse(storage.Admin);
+            console.log(userStorage);
+            console.log(AdminStorage);
+        }
+        signupProcess();
+
+        let loginContainer = document.querySelector(".loginContainer");
+        let classes = loginContainer.classList;
+        if (!(classes.contains("hidden"))) {
+            loginProcess();
+        }
+
+
+    </script>
+</body>
+
+</html>

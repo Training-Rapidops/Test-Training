@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <script>
+        // JavaScript​ ​ function​ ​ to​ ​ fill​ ​ an​ ​ array​ ​with​ ​ values​ ​ (either numeric or​ string​ ​ with​ ​ one character)​ ​ on​ ​ supplied​ ​ bounds.
+        function num_string_range(a, b, l){
+            let output_arr = [];
+            c = static_array.indexOf(a);
+            d = static_array.indexOf(b);
+            e = Number(l);
+            for(i = c;i<d;i+=e){
+                output_arr.push(static_array[i]); 
+            }
+            // return output_arr;
+            alert(output_arr);
+
+        }
+        let static_array = [ "a" , "b" , "c" , "d" , "e" , "f" , "g" , "h" , "i" , "j" , "k" , "l" , "m" , "n" , "o" , "p" , "q" , "r" , "s" , "t" , "u" , "v" , "w" , "x" , "y" , "z" ];
+        let a = prompt("First Value");
+        let b = prompt("Last Value");
+        let l = prompt("bounds");
+        num_string_range(a, b, l);
+
+
+    </script>
+</body>
+</html>

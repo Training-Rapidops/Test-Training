@@ -1,0 +1,108 @@
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: {{name}}
+  labels:
+    service: {{serviceTag}}
+  namespace: {{namespace}}
+spec:
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 100
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      parallelism: 1
+      template:
+        metadata:
+          annotations:
+            sidecar.istio.io/inject: "false"
+          labels:
+            service: {{serviceTag}}
+        spec:
+          containers:
+            - command:
+                - /bin/bash
+                - -ce
+                - sleep 30s && cd /home/salesmate 
+                  && cp /home/salesmate/config-files/config.js config/service-configuration/{{environmentVariables.NODE_ENV}}.js 
+                  && cp /home/salesmate/service-endpoints/config.js config/service-endpoints/{{environmentVariables.NODE_ENV}}.js 
+                  && cp /home/salesmate/backend-config/config.js config/backend-config/{{environmentVariables.NODE_ENV}}.js 
+                  && cp /home/salesmate/gcp-keys/gcp-service-account-key.json config/gcp-service-account-key.json 
+                  && source /home/salesmate/.bash_profile
+                  && nvm use {{nodeVersion}} && node --max-old-space-size={{maxOldSpaceSize}} --expose-gc {{fileToRun}}
+              env:
+                - name: NODE_ENV
+                  value: {{environmentVariables.NODE_ENV}}
+              image: gcr.io/{{PROJECT_ID}}/{{IMAGE_NAME}}:{{IMAGE_TAG}}
+              imagePullPolicy: Always
+              name: {{name}}
+              resources:
+                requests:
+                  cpu: {{resources.request.cpu}}
+                  memory: {{resources.request.memory}}
+              terminationMessagePath: /dev/termination-log
+              terminationMessagePolicy: File
+              volumeMounts:
+                - mountPath: /cockroach-certs
+                  name: client-certs
+                - mountPath: /home/salesmate/config-files
+                  name: config-file
+                - mountPath: /home/salesmate/tmp
+                  name: tmp
+                - mountPath: /home/salesmate/gcp-keys
+                  name: gcp-keys
+                - name: backend-configmap
+                  mountPath: /home/salesmate/backend-config
+                - name: service-endpoints
+                  mountPath: /home/salesmate/service-endpoints
+          dnsPolicy: ClusterFirst
+          initContainers:
+            - command:
+                - /bin/ash
+                - -ecx
+                - /request-cert -namespace=${POD_NAMESPACE} -certs-dir=/cockroach-certs
+                  -type=client -user=root -symlink-ca-from=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+              env:
+                - name: POD_NAMESPACE
+                  valueFrom:
+                    fieldRef:
+                      apiVersion: v1
+                      fieldPath: metadata.namespace
+              image: cockroachdb/cockroach-k8s-request-cert:0.4
+              imagePullPolicy: IfNotPresent
+              name: init-certs
+              resources: {}
+              terminationMessagePath: /dev/termination-log
+              terminationMessagePolicy: File
+              volumeMounts:
+                - mountPath: /cockroach-certs
+                  name: client-certs
+          nodeSelector:
+            pool: jobs
+          restartPolicy: OnFailure
+          schedulerName: default-scheduler
+          securityContext: {}
+          serviceAccount: cockroachdb
+          serviceAccountName: cockroachdb
+          terminationGracePeriodSeconds: 30
+          volumes:
+            - name: client-certs
+              emptyDir: {}
+            - name: tmp
+              emptyDir: {}
+            - name: config-file
+              configMap:
+                name: {{serviceTag}}-configmap
+            - name: service-endpoints
+              configMap:
+                name: service-endpoints-configmap
+            - name: backend-configmap
+              configMap:
+                name: default-service-configmap
+            - name: gcp-keys
+              configMap:
+                defaultMode: 420
+                name: salesmate-gcp-keys
+  schedule: "{{schedule}}"
+  successfulJobsHistoryLimit: 1
+  suspend: false

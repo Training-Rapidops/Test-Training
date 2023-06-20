@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <script>
+     function getDiff(n){
+        let year=0, month = 0, day = 0;
+
+        if(n/365 != 0){
+            year  = Math.floor(n/365);
+            n= n - Math.floor(n/365)*365;
+        }
+        if(n/30!=0){
+            month = Math.floor(n/30);
+            n= n-Math.floor(n/30)*30;
+        }
+        
+        
+        alert(`${year} Years , ${month} Months and ${n} Days`)
+     } 
+     
+     function isLeap(date){
+        if(date.getFullYear()%4 ==0){
+            return true;
+        }
+        return false;
+     }
+     function includesLeapDate(date1,date2){
+        if(isLeap(date1)){
+            if(date1.getMonth()<1){
+                return true;
+            }
+            return false;
+        }
+        else{
+            if(date2.getMonth()>1){
+                return true;
+            }
+            return false;
+        }
+     }
+     let date1 = new Date("07/01/2018");
+     let date2 = new Date("05/03/2020");
+     let Diff = Math.abs((date1.getTime() - date2.getTime())/(1000*3600*24));
+
+     if(!isLeap(date1) && !isLeap(date2)){
+         getDiff(Diff);
+     }
+     else{
+        if(includesLeapDate(date1,date2)){
+            getDiff(Diff + 1);
+        }
+        else{
+            getDiff(Diff);
+        }
+     }
+   </script>
+</body>
+</html>

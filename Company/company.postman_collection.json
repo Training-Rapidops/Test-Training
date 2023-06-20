@@ -1,0 +1,157 @@
+{
+	"info": {
+		"_postman_id": "c5cf789e-16dc-457c-bc65-04c0db14a4c4",
+		"name": "company",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "http://localhost:6000/company/addcompany",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"name\":\"Rapid11\",\n        \"address\":\"kjxhshx\",\n        \"owner\":{\"name\":\"Safi Shaikh\",\n        \"address\":\"Satelite Road\",\n        \"ownerMail\":\"pateldeep2904@gmail.com\",\n        \"ownerPassword\":\"123456afaA\"\n        },\n        \"contectNo\":9876543210,\n        \"contectEmail\":\"Safi.shaikh360@gmail.com\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:6000/company/addcompany",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "6000",
+					"path": [
+						"company",
+						"addcompany"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "http://localhost:6000/company/getcompany/048784e6-14b0-4f79-ac32-7479df864c7f",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:6000/company/getcompany/5278c30f-e990-4bf3-8e0a-3ea653e43afd",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "6000",
+					"path": [
+						"company",
+						"getcompany",
+						"5278c30f-e990-4bf3-8e0a-3ea653e43afd"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "http://localhost:6000/company/getcompanybyname/aaaggdgda",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:6000/company/getcompanybyname/Rapid",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "6000",
+					"path": [
+						"company",
+						"getcompanybyname",
+						"Rapid"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "http://localhost:6000/company/getallcompany",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:6000/company/getallcompany?limit=55",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "6000",
+					"path": [
+						"company",
+						"getallcompany"
+					],
+					"query": [
+						{
+							"key": "limit",
+							"value": "55"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "http://localhost:6000/company/updatecompany/048784e6-14b0-4f79-ac32-7479df864c7f",
+			"request": {
+				"method": "PATCH",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n        \"name\":\"Rapid\",\n        \"address\":\"Sola Road ,Ahmedabad\",\n        \"contectNo\":9876543210,\n        \"contectEmail\":\"Safi.shaikh360@gmail.com\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:6000/company/updatecompany/3ddb4306-7c16-42fe-8473-88041623a281",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "6000",
+					"path": [
+						"company",
+						"updatecompany",
+						"3ddb4306-7c16-42fe-8473-88041623a281"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "http://localhost:6000/company/deletecompany/3611940a-3fc4-452e-8c85-98388445b895",
+			"request": {
+				"method": "DELETE",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:6000/company/deletecompany/fa669283-e468-488c-9242-ea158fcb8c20",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "6000",
+					"path": [
+						"company",
+						"deletecompany",
+						"fa669283-e468-488c-9242-ea158fcb8c20"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}

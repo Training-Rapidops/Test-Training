@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <script>
+        // Code To insert Element
+        function insertElement(){
+            insertPosition = +prompt("Enter Insert Position",2)
+            objName = prompt("name:","Daniel");
+            objAge = prompt("age:","56");
+            let obj = {
+                name:objName,
+                age:objAge
+            };
+
+            static_array.splice(insertPosition,"",obj);
+            console.log(static_array);
+        }
+        // ode to delete Element
+        function deleteElement(){
+            let n = +prompt("Enter Index to be deleted", 2);
+            static_array.splice(n, 1);
+            console.log(static_array);
+        }
+
+        static_array = [  {name:  "Jack" , age : 23}, {name:  "Sam" , age : 12},  {name:  "Max" , age : 20} ];
+        userChoice = prompt("Enter 1 To Insert element\nEnter 0 To Delete Element");
+        
+        if(userChoice == 0){
+            deleteElement();
+        }
+        else if(userChoice == 1){
+            insertElement();
+        }
+        else{
+            alert("Incorrect Answer")
+        }
+    </script>
+</body>
+</html>

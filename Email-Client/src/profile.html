@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <h1>Welcome to Profile Page</h1>
+    <h2 id="name">Your full name is:</h2>
+    <img id="image" /><br />
+    <button onclick="logout()">Logout</button>
+    <h4 id="labels">Labels</h4>
+    <h4 id="NORESULT">NORESULT</h4>
+  </body>
+  <script>
+    //authorizationCode = Array.from(currrentLocation.searchParams.values())[1]
+
+    (async function () {
+      let client_id =
+          "1090469197919-3093ap8g35gpj99bebieh6o14floie31.apps.googleusercontent.com",
+        client_secret = "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",
+        authorization_code = window.location.search.split("?")[1].split("=")[1];
+      const token = await getAccessToken(
+        authorization_code,
+        client_id,
+        client_secret
+      );
+
+      const userData = await getUser(token);
+      const addedUserID = await addUser({ userData, token });
+      document.getElementById("name").innerHTML += userData.name;
+      document.getElementById("image").setAttribute("src", userData.picture);
+
+      // -----------------------Functions ---------------------------------
+      async function getAccessToken() {
+        try {
+          const data = await fetch(
+            `https://oauth2.googleapis.com/token?code=${authorization_code}&redirect_uri=http://127.0.0.1:5501/src/profile.html&client_id=${client_id}&client_secret=${client_secret}&scope=&grant_type=authorization_code`,
+            { method: "POST" }
+          );
+          const responce = await data.json();
+          console.log(responce);
+
+          localStorage.setItem("access_token", responce.access_token);
+          return responce;
+        } catch (err) {
+          console.log(err);
+        }
+      }
+
+      async function getUser(token) {
+        try {
+          let user = await fetch(
+            `https://www.googleapis.com/oauth2/v2/userinfo`,
+            {
+              headers: {
+                Authorization: `Bearer ${token["access_token"]}`,
+              },
+            }
+          );
+
+          let responce = await user.json();
+          console.log(responce);
+          return responce;
+        } catch (err) {
+          console.log(err);
+        }
+      }
+
+      async function addUser({ userData, token }) {
+        const expiresIn = String(Date.now() + 3300000);
+        const data = await fetch("http://localhost:3000/adduser", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: userData.name,
+            email: userData.email,
+            picturePath: userData.picture,
+            access_token: token.access_token,
+            refresh_token: token.refresh_token,
+            expiresIn: expiresIn,
+          }),
+        });
+
+        const result = await data.json();
+
+        return result;
+      }
+
+      async function logout() {
+        try {
+          console.log(token);
+          await fetch(
+            "https://oauth2.googleapis.com/revoke?token=" +
+              token["access_token"],
+            {
+              method: "POST",
+              headers: {
+                "Content-type": "application/x-www-form-urlencoded",
+              },
+            }
+          ).then((data) => {
+            location.href = "http://127.0.0.1:5501/src/index.html";
+          });
+        } catch (err) {
+          console.log(err);
+        }
+      }
+    })();
+  </script>
+</html>

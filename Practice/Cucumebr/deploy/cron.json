@@ -1,0 +1,9 @@
+{
+  "sample-cron": {
+    "fileToRun": "src/crons/sample.js",
+    "schedule": "*/30 * * * *",
+    "environmentVariables": ["NODE_JOB_PORT"],
+    "labels": [],
+    "serviceTag": "service-template"
+  }
+}

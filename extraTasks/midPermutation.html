@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mid Permutation</title>
+</head>
+<body>
+    <script>
+        function strEven(str){
+            let n = Math.floor((str.length-1)/2) ;
+            newStr = str.slice(n,n+1);
+            let newArr = str.split("");
+            newArr.sort((a,b)=>a.localeCompare(b)).reverse();
+            newArr.splice(str.length-n-1,1);
+            let str2 = newArr.join("");
+            newStr = newStr + str2;
+            alert(newStr);
+
+        }
+        function strOdd(str){
+            let n = Math.floor(str.length/2) ;
+            newStr = str.slice(n,n+1);
+            let newArr = str.split("");
+            newArr.sort((a,b)=>a.localeCompare(b)).reverse();
+            newArr.splice(str.length-n-1,1);
+            newArr.unshift(newArr[newArr.length-2]);
+            newArr.splice(newArr.length-2, 1);
+            let str2 = newArr.join("");
+            newStr = newStr + str2;
+            alert(newStr);
+
+        }
+        str = prompt("Enter Sting ", "abcd");
+        // n = (str.length)%2==0?Math.floor(str.length/2):Math.floor((str.length-1)/2);
+        if((str.length%2)==0){
+            strEven(str)
+        }
+        else{
+            strOdd(str);
+        }
+        // alert(str[n]);
+        
+    </script>
+</body>
+</html>

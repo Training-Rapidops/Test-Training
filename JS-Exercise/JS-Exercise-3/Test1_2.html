@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test1 - 2 </title>
+</head>
+<body>
+    <script>
+        //--------------------------------------------HTML Tags Remover-----------------------------------------------------------------------
+        function getString(str){
+            while(str[0] == "<"){
+                let i = 0;
+                while(str[i] != ">"){
+                    i++
+                }
+                str = str.slice(i+1, -i-2);
+               
+            }
+            return str;
+        }
+
+        let str2 = prompt("Enter String With HTML tags", '<p><strong><em>Javascript​ ​ Exercises</em></strong></p>');
+        alert(getString(str2));
+
+    </script>
+</body>
+</html>

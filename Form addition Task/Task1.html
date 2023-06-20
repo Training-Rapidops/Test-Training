@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task 1</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .form {
+            display: flex;
+            margin: auto;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        form {
+            display: flex;
+            margin: 20px 60px;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: left;
+            font-size: 20px;
+
+
+        }
+
+        form>label {
+            display: flex;
+            text-align: left;
+        }
+
+        form>input,
+        form>select {
+            width: 200px;
+
+        }
+
+        table,
+        table>tr,
+        tr>th {
+            border: 2px solid wheat;
+            margin: 10px auto;
+            padding: 10px;
+            width: 120px;
+        }
+
+        tr>td {
+            width: 120px;
+            margin: auto;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="form">
+        <form onsubmit="onSubmit()">
+            <label for="fname">First Name :</label>
+            <input type="text" name="fname" id="fname" placeholder="Enter First Name" minlength="6" required><br>
+            <label for="lname">Last Name :</label>
+            <input type="text" name="lname" id="lname" placeholder="Enter Last Name" minlength="6" required><br>
+            <label for="email">Email :</label>
+            <input type="email" name="email" id="email" placeholder="Email Address" required><br>
+            <label for="age">Age :</label>
+            <input type="number" id="age" name="age" placeholder="Age" max="26" min="13" required><br>
+            <label for="bdate">Birth Date :</label>
+            <input type="date" name="bdate" id="bdate" required><br>
+            <label for="places">Places :</label>
+            <select name="places" id="places" required multiple>
+                <option value="Gujarat">Gujarat</option>
+                <option value="Maharashtra">Maharashtra</option>
+                <option value="Rajasthan">Rajasthan</option>
+                <option value="Delhi">Delhi</option>
+            </select><br>
+            <div class="payRadio">
+
+                <label for="paymethod">Payment Option :</label><br>
+                <input type="radio" name="pay" id="debitcard" value="DebitCard" class="paymethod">Debit Card <br>
+                <input type="radio" name="pay" id="creditcard" value="CreditCard" class="paymethod">Credit Card <br>
+                <input type="radio" name="pay" id="cash" value="Cash" class="paymethod">Cash <br>
+                <input type="radio" name="pay" id="upi" value="UPI" class="paymethod">UPI <br>
+            </div>
+            <label for="vehicle">Vehicle</label>
+            <select name="vehicle" id="vehicle">
+                <option value="inova">Innova</option>
+                <option value="scorpio">Scorpio</option>
+                <option value="i10">i10</option>
+                <option value="bike">Bike</option>
+            </select><br>
+            <input type="submit" value="Submit">
+        </form><br>
+        <table id="detailTable" class="hidden">
+            <tr>
+                <th>Index </th>
+                <th>FirstName </th>
+                <th>LastName </th>
+                <th>EmailAdress </th>
+                <th>Age </th>
+                <th>BirthDate </th>
+                <th>Places </th>
+                <th>PaymentMethod </th>
+                <th>Vehicle </th>
+            </tr>
+        </table>
+    </div>
+    <script>
+        function onSubmit() {
+            event.preventDefault();
+            let row = document.createElement("tr"),
+                index = document.createElement('td'),
+                fnameData = document.createElement("td"),
+                lnameData = document.createElement("td"),
+                emailData = document.createElement("td"),
+                ageData = document.createElement("td"),
+                bdateData = document.createElement("td"),
+                placesData = document.createElement("td"),
+                payData = document.createElement("td"),
+                vehicleData = document.createElement("td");
+
+            fnameValue = document.getElementById("fname").value,
+                lnameValue = document.getElementById("lname").value,
+                emailValue = document.getElementById("email").value,
+                ageValue = document.getElementById("age").value,
+                bdateValue = bdate.value,
+                placeValue = document.getElementById("places").options[places.selectedIndex].text,
+                vehicleValue = document.getElementById("vehicle").options[vehicle.selectedIndex].text,
+                payMethod = document.querySelector('input[name="pay"]:checked').value,
+                detailTable = document.getElementById("detailTable"),
+                detailTable.classList.remove("hidden");
+
+            index.innerHTML = i;
+            fnameData.innerHTML = fnameValue;
+            lnameData.innerHTML = lnameValue;
+            emailData.innerHTML = emailValue;
+            ageData.innerHTML = ageValue;
+            bdateData.innerHTML = bdateValue;
+            placesData.innerHTML = placeValue;
+            payData.innerHTML = payMethod;
+            vehicleData.innerHTML = vehicleValue;
+
+            row.appendChild(index);
+            row.appendChild(fnameData);
+            row.appendChild(lnameData);
+            row.appendChild(emailData);
+            row.appendChild(ageData);
+            row.appendChild(bdateData);
+            row.appendChild(placesData);
+            row.appendChild(payData);
+            row.appendChild(vehicleData);
+            detailTable.insertAdjacentElement("beforeend", row);
+
+            i++;
+
+        }
+        let i = 1;
+        let fnameValue, lnameValue, emailValue, ageValue, bdate, bdateValue, placeValue, vehicleValue, payMethod, detailTable;
+
+        bdate = document.getElementById("bdate");
+        let date = new Date();
+        let month = date.getMonth() > 9 ? (date.getMonth() + 1) : "0" + (date.getMonth() + 1);
+        let maxValue = `${date.getFullYear()}-${month}-${date.getDate()}`;
+        bdate.setAttribute("max", maxValue);
+
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test1 - 1</title>
+</head>
+
+<body>
+    <script>
+        // ------------------------------------Email Validation-----------------------------------------------------------------------
+        function varifyEmail(strEmail) {
+            regExpression = /[a-zA-Z0-9+_.-]+@[a-zA-Z0-9.-]+[a-zA-Z]{2,3}./;
+            if (regExpression.test(strEmail)) {
+                return true;
+            }
+            else {
+                return false;
+            }
+        }
+        function hideEmail(strEmail) {
+            let strNew, i = 2;
+            strNew = strEmail.slice(0, 2);
+            while (strEmail[i] != "@") {
+                if (strEmail[i + 1] == "@") { break; }
+                strNew = strNew + "*"
+                i++;
+            }
+            strNew = strNew + strEmail[i];
+            strNew = strNew + strEmail.slice(i + 1)
+            alert(strNew);
+
+        }
+
+        let strEmail = prompt("Enter User Email", "abcdef@example.com");
+        varifyEmail(strEmail);
+        if (varifyEmail) {
+            // alert("Valid Email Address !!");
+            hideEmail(strEmail);
+        }
+        else {
+            alert("Not a Valid Email Address !!");
+        }
+    </script>
+</body>
+
+</html>

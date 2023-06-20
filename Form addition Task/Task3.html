@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task 3 </title>
+</head>
+
+<body>
+    <h2>Select Region</h2>
+    <select id="contries">
+        <option value="">Select A Country</option>
+    </select>
+    <select id="states">
+        <option value="">Select A States</option>
+    </select>
+    <select id="cities">
+        <option value="">Select A Cities</option>
+    </select>
+    <script>
+        let data = {
+            USA: {
+                California: ["Los Angeles", "San Francisco", "San Diego"],
+                Texas: ["Houston ", "Austin", "Dallas"]
+            },
+            India: {
+                Gujarat: ["Ahmedabad", "Baroda", "Anand"],
+                Maharashtra: ["Mumbai ", "Pune", "Nagpur"]
+            },
+            Canada: {
+                Alberta: ["Calgary", "Red Deer", "Leduc"],
+                Manitoba: ["Winnipeg ", "Morden", "Brandon"]
+            }
+        }
+        let contriesSelect = document.getElementById("contries");
+        let stateSelect = document.getElementById("states");
+        let citiSelect = document.getElementById("cities")
+        let contries = Object.keys(data);
+        contries.forEach(val => {
+            contriesSelect.innerHTML += `<option value="${val}">${val}</option>`;
+        });
+        contriesSelect.addEventListener("change", () => {
+            stateSelect.innerHTML = `<option value="">Select A States</option>`;
+
+            let states = Object.keys(data[contriesSelect.value]);
+            let statesEntries = Object.values(data[contriesSelect.value]);
+            if (statesEntries) {
+                states.forEach(val => {
+                    stateSelect.innerHTML += `<option value="${val}">${val}</option>`;
+                });
+                stateSelect.addEventListener("change", () => {
+                    citiSelect.innerHTML = `<option value="">Select A Cities</option>`;
+                    let cities = statesEntries[states.indexOf(stateSelect.value)];
+                    if (cities) {
+                        cities.forEach(val => {
+                            citiSelect.innerHTML += `<option value="${val}">${val}</option>`;
+                        });
+
+                    }
+                });
+            }
+
+        });
+    </script>
+</body>
+
+</html>

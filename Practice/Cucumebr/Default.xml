@@ -1,0 +1,13 @@
+<profile version="1.0">
+    <option name="myName" value="Default"/>
+    <inspection_tool class="ES6ConvertLetToConst" enabled="true" level="ERROR" enabled_by_default="true"/>
+    <inspection_tool class="ES6ConvertToForOf" enabled="true" level="WARNING" enabled_by_default="true"/>
+    <inspection_tool class="ES6ConvertVarToLetConst" enabled="true" level="ERROR" enabled_by_default="true"/>
+    <inspection_tool class="ES6MissingAwait" enabled="true" level="ERROR" enabled_by_default="true"/>
+    <inspection_tool class="ES6PossiblyAsyncFunction" enabled="true" level="WARNING" enabled_by_default="true"/>
+    <inspection_tool class="Eslint" enabled="true" level="ERROR" enabled_by_default="true"/>
+    <inspection_tool class="JSUnresolvedFunction" enabled="false" level="WEAK WARNING" enabled_by_default="false"/>
+    <inspection_tool class="JSUnusedLocalSymbols" enabled="true" level="WARNING" enabled_by_default="true">
+        <option name="myIgnoreUnusedCatchParameters" value="false"/>
+    </inspection_tool>
+</profile>

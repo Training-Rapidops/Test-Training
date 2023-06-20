@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <script>
+        // JavaScript​ ​function​ ​ to​ ​ insert​ ​ a ​ ​ string​ ​ within​ ​ a ​ ​ string​ ​ at​ ​ a ​ ​ particular​ ​ position (default​ ​ is​ ​ 1).
+        let static_string = "This is a sample string";
+        let input_string = prompt("Enter String To Insert","Insert me");
+        let input_position = prompt("Enter n ","1");
+        let newString = static_string.slice(0,input_position-1)+input_string+static_string.slice(input_position-1);
+        alert(newString);
+        
+    </script>
+</body>
+</html>

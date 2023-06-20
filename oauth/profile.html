@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <h1>Welcome to Profile Page</h1>
+    <h2 id="name">Your full name is:</h2>
+    <img id="image" /><br />
+    <button onclick="logout()">Logout</button>
+    <h4 id="labels"></h4>
+  </body>
+  <script>
+    //authorizationCode = Array.from(currrentLocation.searchParams.values())[1]
+
+    (async function () {
+      let params = {};
+      let regex = /([^&=]+)=([^&]*)/g,
+        m;
+      let client_id =
+          "1090469197919-3093ap8g35gpj99bebieh6o14floie31.apps.googleusercontent.com",
+        client_secret = "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";
+      console.log(location.href);
+      let authorization_code = window.location.search
+        .split("?")[1]
+        .split("=")[1];
+      console.log(authorization_code);
+
+      const token = await getAccessToken();
+      console.log(token.access_token);
+
+      const userData = await getUser(token);
+      document.getElementById("name").innerHTML += userData.name;
+      document.getElementById("image").setAttribute("src", userData.picture);
+
+      const labels = await getLabel(userData);
+
+      for (let i = 0; i < labels.length; i++) {
+        document.getElementById("labels").innerHTML += `${labels[i]} <br>`;
+      }
+
+      // -----------------------Functions ---------------------------------
+      async function getUser(token) {
+        let user = await fetch(
+          `https://www.googleapis.com/oauth2/v2/userinfo`,
+          {
+            headers: {
+              Authorization: `Bearer ${token["access_token"]}`,
+            },
+          }
+        );
+
+        let responce = await user.json();
+        console.log(responce);
+        return responce;
+      }
+      async function getLabel(userData) {
+        const data = await fetch(
+          `https://gmail.googleapis.com/gmail/v1/users/me/labels?access_token=${x.access_token}`,
+          {
+            headers: {
+              Authorization: `Bearer ${x["access_token"]}`,
+            },
+          }
+        );
+        const responce = await data.json();
+        const labels = responce.labels;
+
+        let labeldata = [];
+        labels.forEach((val) => {
+          labeldata.push(val.name);
+        });
+        return labeldata;
+      }
+      async function getAccessToken() {
+        const data = await fetch(
+          `https://oauth2.googleapis.com/token?code=${authorization_code}&redirect_uri=http://127.0.0.1:5500/profile.html&client_id=${client_id}&client_secret=${client_secret}&scope=&grant_type=authorization_code`,
+          { method: "POST" }
+        );
+        const responce = await data.json();
+        console.log(responce);
+        return responce;
+      }
+      function logout() {
+        fetch(
+          "https://oauth2.googleapis.com/revoke?token=" + token["access_token"],
+          {
+            method: "POST",
+            headers: {
+              "Content-type": "application/x-www-form-urlencoded",
+            },
+          }
+        ).then((data) => {
+          location.href = "http://localhost:5500/index.html";
+        });
+      }
+    })();
+  </script>
+</html>

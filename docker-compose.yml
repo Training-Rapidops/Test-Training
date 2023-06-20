@@ -1,0 +1,37 @@
+version: "1"
+
+services:
+  company:
+    container_name: company-container
+    networks:
+      - default
+    environment:
+      - NODE_ENV=docker
+    build:
+      context: ./Company
+      dockerfile: ./Dockerfile
+    # image: company-service
+    ports:
+      - 6000:6000
+    restart: always
+    volumes:
+      - ./Company/src:/Company/src
+
+  employee:
+    container_name: employee-container
+    environment:
+      - NODE_ENV=docker
+    build:
+      context: ./Employees
+      dockerfile: ./Dockerfile 
+    # image: employee-service
+    ports:
+      - 5000:5000
+    restart: always
+    volumes:
+      - ./Employees/src:/Employees/src
+      - ./Employees/downloads:/Employees/downloads
+networks:
+  default:
+    external:
+      name: safi-shaikh_roachnet

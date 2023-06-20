@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css"
+        integrity="sha384-rbsA2VBKQhggwzxH7pPCaAqO46MgnOM80zW1RWuH61DGLwZJEdK2Kadq2F9CUG65" crossorigin="anonymous">
+    <style>
+        * {
+
+            background: #ced4da;
+            color: #fff;
+        }
+
+        h2 {
+            margin: 10px auto;
+            width: fit-content;
+        }
+
+        body {
+            background: #ced4da;
+        }
+
+        .container {
+            margin: 50px auto;
+            font: 25px Arial, sans-serif;
+            width: 1000px;
+            background: #222;
+            padding: 20px;
+            /* display: flex; */
+            /* flex-direction: row; */
+        }
+
+        .content {
+            margin-bottom: 10px;
+            display: flex;
+            flex-direction: row;
+        }
+
+        #fname,
+        #lname,
+        .fshow,
+        .lshow {
+            font: 25px Arial, sans-serif;
+            margin: 10px 10px;
+
+        }
+
+        #addbtn {
+            color: blueviolet;
+            font-weight: 500;
+            margin-left: 40px;
+            border: 2px solid blueviolet;
+        }
+
+        .editbtn {
+            background-color: #49bf21;
+            width: 80px;
+            margin: 10px;
+        }
+
+        .dltbtn,.multidltbtn {
+            background-color: red;
+            width: 80px;
+            margin: 10px;
+        }
+        .multiStats{
+            margin: 10px auto;
+            height: 57px;
+        }
+        .multidltbtn{
+            justify-self: right;
+            float: right;
+            margin-right: 20px;
+        }
+        #selectall{
+            margin-right: 250px;
+        }
+        .hidden {
+            display: none;
+        }
+    </style>
+    <title>Task 4 - Dynamic Table </title>
+</head>
+
+<body>
+    <h2>Name Directory</h2>
+    <div class="container">
+        <input type="text" id="fname" placeholder="First Name" title="First Name">
+
+        <input type="text" id="lname" placeholder="Last Name" title="Last Name">
+        <button class="addbtn" id="addbtn" title="Add Values">⊕ Add</button>
+        <button class="updtbtn hidden" id="addbtn" title="Update Values">⟲ Update</button>
+ 
+        <div class="multiStats hidden">
+            <input type="checkbox" name="SelectAll" id="CheckAll"><span id="selectall"> Select All</span>
+            Total <span id="total">0</span> Rows Selected
+            <button class="btn multidltbtn ">Delete</button>
+
+        </div>
+
+        <script>
+            let container = document.querySelector(".container");
+            let fname = document.querySelector("#fname");
+            let lname = document.querySelector("#lname");
+            let addbtn = document.getElementById("addbtn");
+            let updtbtn = document.querySelector(".updtbtn");
+            let multiStats= document.querySelector(".multiStats");
+            let multiDeleteBtn = document.querySelector(".multidltbtn");
+            let CheckAll = document.getElementById("CheckAll");
+            let checkArr = [];
+            
+            addbtn.addEventListener("click", addRow);
+            let i = 1;
+
+            // Adding A row 
+            function addRow() {
+                if(i>0){
+                    multiStats.classList.remove("hidden");
+
+                }
+                let content = document.createElement("div");
+                let fshow = document.createElement("input");
+                let lshow = document.createElement("input");
+                let CheckBox = document.createElement("input");
+                
+                fshow.value = fname.value;
+                lshow.value = lname.value;
+                
+                content.setAttribute("id", `content${i}`);
+                content.setAttribute("class", `content`);
+                content.setAttribute("title", `Row ${i}`)
+                fshow.setAttribute("id", `fshow${i}`);
+                fshow.setAttribute("class", "fshow");
+                lshow.setAttribute("id", `lshow${i}`);
+                lshow.setAttribute("class", "lshow")
+                CheckBox.setAttribute("type","checkbox");
+                CheckBox.setAttribute("id", `check${i}`);
+
+
+                container.appendChild(content);
+                content.appendChild(CheckBox);
+                content.appendChild(fshow);
+                content.appendChild(lshow);
+
+                let editbtn = document.createElement("button");
+                let dltbtn = document.createElement("button");
+
+                editbtn.classList.add("btn", "editbtn");
+                dltbtn.classList.add("btn", "dltbtn");
+                editbtn.innerHTML = "Edit";
+                dltbtn.innerHTML = "Delete"
+
+                editbtn.setAttribute("id", `editbtn${i}`);
+                dltbtn.setAttribute("id", `dltbtn${i}`)
+                content.appendChild(editbtn);
+                content.appendChild(dltbtn);
+
+                editbtn.addEventListener("click", editBtn);
+                dltbtn.addEventListener("click", dltBtn);
+
+                CheckBox.addEventListener("change", checkclick);
+                CheckAll.addEventListener("change",checkAllClick);
+                
+
+                i++;
+                backNormal();
+            }
+            // Edit Button
+            function editBtn() {
+                let eventbtn = event.target;
+                let regex = /\d+/g;
+                let i = eventbtn.getAttribute("id").match(regex).join("");
+                console.log(i);
+                let fshow = document.getElementById(`fshow${i}`);
+                let lshow = document.getElementById(`lshow${i}`);
+
+                document.getElementById("fname").value = `${fshow.value}`;
+                document.getElementById("lname").value = `${lshow.value}`;
+
+                // let addbtn = document.querySelector(".addbtn");
+                updtbtn.classList.remove("hidden");
+                addbtn.classList.add("hidden");
+                updtbtn.addEventListener("click", function () {
+                    fshow.value = `${document.getElementById("fname").value}`;
+                    lshow.value = `${document.getElementById("lname").value}`;
+                    backNormal();
+                });
+
+
+            }
+            // Delete Button
+            function dltBtn() {
+                let eventbtn = event.target;
+                let regex = /\d+/g;
+                let i = eventbtn.getAttribute("id").match(regex).join("");
+                let rowRM = document.getElementById(`content${i}`);
+                rowRM.remove();
+            }
+            //checkbox event
+            function checkAllClick(){
+                for(j = 1;j<i;j++){
+                    let checkrow = document.getElementById(`check${j}`)
+                    console.log(j)
+                    if(!checkrow.checked){
+                        checkrow.checked = true;
+                    }
+                }
+                multiDeleteBtn.addEventListener("click", multiDeleteAll);
+            }
+            function checkclick(){
+                let eventcheck = event.target;
+                let regex = /\d+/g;
+                let i = eventcheck.getAttribute("id").match(regex).join("");
+                
+                if(eventcheck.checked){
+                    checkArr.push(i);
+                }
+                let total = document.getElementById("total");
+                total.innerHTML = `${checkArr.length}`;
+
+                multiDeleteBtn.addEventListener("click", multiDelete);
+            }
+            // Delete Multiple Row 
+            function multiDeleteAll(){
+                console.log(i);
+                for(j=1;j<i;j++){
+                    let eachRow  = document.getElementById(`content${j}`);
+                    eachRow.remove();
+                }
+            }
+            function multiDelete(){
+                console.log(checkArr);
+                for(j = 0;j<checkArr.length;j++){
+                    let multiRow = document.getElementById(`content${checkArr[j]}`);
+                    multiRow.remove();
+                }
+                
+            }
+            //To get initial state of input fields and buttons
+            function backNormal() {
+                fname.value = "";
+                lname.value = "";
+                addbtn.classList.remove("hidden");
+                updtbtn.classList.add("hidden");
+            }
+        </script>
+    </div>
+</body>
+
+</html>

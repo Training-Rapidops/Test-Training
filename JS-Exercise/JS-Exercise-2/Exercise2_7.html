@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <Script>
+        // JavaScript​ ​ function​ ​ to​ ​ get​ ​ the​ ​ month​ ​name​ ​ from​ ​ a ​ ​ particular​ ​ date.
+        function getMonth(date){
+            let n = date.length;
+            let datearr = [];
+
+            while(n>0){
+                datearr[n] = date[n]
+                n--;
+            }
+            datearr.splice(2,1);
+            datearr.splice(4,1);
+            str = datearr[2] + datearr[3];
+            for(i = 0; i<mnth.length; i++){
+                if(+str == i+1){
+                    alert(mnth[i]);
+                }
+            }
+        }
+        let mnth = ["January","Fabruary", "March", "April", "May","June", "July", "August", "September", "October", "November"];
+        let date = prompt("Enter date In dd-mm-yyyy", "01/07/2018");
+        getMonth(date);
+        
+    </Script>
+</body>
+</html>

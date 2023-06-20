@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <script>
+        let Arr = [
+            {
+                "name" : "safi",
+                "age" : 21,
+                "id" : "a1"
+            },
+            {
+                "name": "Max",
+                "age": 23,
+                "id" : "b1"
+            },
+            {
+                "name": "Aron",
+                "age": 22,
+                "id" : "c1"
+            },
+            {
+                "name": "Smith",
+                "age": 22,
+                "id" : "d1"
+            },
+            {
+                "name": "Aston",
+                "age": 25,
+                "id" : "a1"
+            },
+            {
+                "name": "Naymar",
+                "age": 19,
+                "id" : "a1"
+            },
+            {
+                "name": "Fionna",
+                "age": 45,
+                "id" : "a1"
+            },
+            {
+                "name": "Seth",
+                "age": 36,
+                "id" : "a1"
+            },
+            {
+                "name": "McBeth",
+                "age": 32,
+                "id" : "a1"
+            },
+            {
+                "name": "Warn",
+                "age": 11,
+                "id" : "a1"
+            }
+        ];
+        let newArr = Arr.slice().sort(function(a,b){
+            return a.age -b.age;
+        });
+        let newArr2 = Arr.slice().sort(function(a,b){
+            if(a.name>b.name){
+                return 1;
+            }
+            else{
+                return -1;
+            }
+        })
+        console.log(newArr);
+        console.log(newArr2);
+            
+    </script>
+</body>
+</html>

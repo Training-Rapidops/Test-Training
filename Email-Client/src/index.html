@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>OAuth2 Google</title>
+  </head>
+  <body>
+    <h1>OAuth2 Google Signin</h1>
+    <button onclick="signIn()">Sign In with Google</button>
+    <script>
+      function signIn() {
+        var oauth2Endpoint = "https://accounts.google.com/o/oauth2/v2/auth";
+
+        var form = document.createElement("form");
+        form.setAttribute("method", "GET");
+        form.setAttribute("action", oauth2Endpoint);
+
+        var params = {
+          client_id:
+            "1090469197919-3093ap8g35gpj99bebieh6o14floie31.apps.googleusercontent.com",
+          redirect_uri: "http://127.0.0.1:5501/src/profile.html",
+          prompt: "consent",
+          access_type: "offline",
+          response_type: "code",
+          scope:
+            " https://mail.google.com/ https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile",
+        };
+
+        for (var p in params) {
+          var input = document.createElement("input");
+          input.setAttribute("type", "hidden");
+          input.setAttribute("name", p);
+          input.setAttribute("value", params[p]);
+          form.appendChild(input);
+        }
+
+        document.body.appendChild(form);
+        form.submit();
+      }
+    </script>
+  </body>
+</html>

@@ -1,0 +1,10 @@
+{
+  "sample": {
+    "fileToRun": "src/handlers/sample.js",
+    "environmentVariables": [
+      "NODE_JOB_PORT"
+    ],
+    "labels": [],
+    "serviceTag": "service-template"
+  }
+}

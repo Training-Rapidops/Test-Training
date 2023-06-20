@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="Exercise2.js"></script>
+    <title>Javascript Exercise 2</title>
+</head>
+
+<body>
+    <script>
+        // JavaScript​ ​ function​ ​ to​ ​ get​ ​the​ ​ first​ ​ and​ ​ last​ ​ element​ ​ of​ ​ an​ ​ array.​ ​ Passing​ ​ a parameter​ ​ 'n'​ ​ will​ ​ return​ ​ the​ ​ first​ ​ 'n'​ ​ elements​ ​ of​ ​ the​ ​ array​ ​ and​ ​last​ ​ ‘n’​ ​ elements​ ​ of​ ​ the array.
+
+         function returnArr(n){
+            let First_n = [], Last_n = [];
+            let x = static_array.length;
+
+            for (i = 0; i < n; i++) {
+                First_n.push(static_array[i]);
+                Last_n.push(static_array[static_array.length - i - 1]);
+            }
+            return [First_n, Last_n];
+        }
+        let static_array = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+        let n = +prompt("n", "0");
+        let str1;
+        let [First_n, Last_n] = returnArr(n);
+        alert(`First ${n} Elements = ${First_n}\nLast ${n} Elements = ${Last_n}`);
+
+    </script>
+</body>
+
+</html>

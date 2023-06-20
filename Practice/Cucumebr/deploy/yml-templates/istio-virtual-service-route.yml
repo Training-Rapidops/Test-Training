@@ -1,0 +1,45 @@
+{
+  "kind": "VirtualService",
+  "apiVersion": "networking.istio.io/v1alpha3",
+  "metadata": {
+    "name": "{{name}}-route",
+    "namespace": "{{namespace}}"
+  },
+  "spec": {
+    "gateways": [
+        "{{gateways}}"
+    ],
+    "hosts": [
+        "{{hosts}}"
+    ],
+    "http": [
+      {
+        "headers": {
+          "request": {
+            "remove": [
+                "x-user-id"
+            ]
+          }
+        },
+        "match": [
+          {
+            "uri": {}
+          }
+        ],
+        "rewrite": {
+          "uri": "{{endpointPrefix}}"
+        },
+        "route": [
+          {
+            "destination": {
+              "host": "{{destinationHost}}",
+              "port": {
+                "number": "{{NODE_PORT}}"
+              }
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

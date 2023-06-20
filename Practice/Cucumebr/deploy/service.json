@@ -1,0 +1,63 @@
+{
+  "sample-service": {
+    "fileToRun": "index.js",
+    "endpointPrefix": [
+      {
+        "prefix": "sample-service"
+      }
+    ],
+    "rewriteEndpointPrefix": "",
+    "environmentVariables": [
+      "NODE_PORT"
+    ],
+    "commonEnvironmentVariables": [
+      "REGION",
+      "NODE_ENV"
+    ],
+    "labels": [],
+    "servicePort": 8080,
+    "nodeVersion": "12",
+    "maxOldSpaceSize": "512",
+    "hasMultipleHttp": false,
+    "noOfHttp": 1,
+    "hasMultipleUriMatch": false,
+    "noOfUriMatch": 1,
+    "generateVirtualService": true,
+    "generateRoute": true,
+    "generateService": true,
+    "serviceName": "sample-service",
+    "serviceTag": "service-template",
+    "serviceType": "ClusterIP"
+  },
+  "run-service-template-utilities-and-migrations": {
+    "fileToRun": "index.js",
+    "isPreReleaseDeployment": true,
+    "endpointPrefix": [
+      {
+        "prefix": "sample-service"
+      }
+    ],
+    "rewriteEndpointPrefix": "sample-service",
+    "environmentVariables": [
+      "NODE_PORT"
+    ],
+    "commonEnvironmentVariables": [
+      "REGION",
+      "NODE_ENV"
+    ],
+    "labels": [],
+    "servicePort": 8080,
+    "nodeVersion": "12",
+    "maxOldSpaceSize": "512",
+    "hasMultipleHttp": false,
+    "noOfHttp": 0,
+    "hasMultipleMatch": false,
+    "noOfMatch": 0,
+    "generateVirtualService": false,
+    "generateRoute": false,
+    "generateService": false,
+    "serviceName": "sample-service",
+    "serviceTag": "service-template",
+    "ymlWithoutHealthCheck": true
+  }
+}

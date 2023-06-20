@@ -1,0 +1,51 @@
+{
+  "name": "service-template",
+  "version": "1.0.0",
+  "description": "Template to use to create microservice in Salesmate",
+  "main": "index.js",
+  "scripts": {
+    "test": "node ./node_modules/nyc/bin/nyc.js --reporter=cobertura --reporter=html node_modules/cucumber/bin/cucumber-js src/use-cases --parallel 5 --format=json --fail-fast --require \"src/use-cases/**/!(index).js\" | cucumber-junit > junit.xml",
+    "start": "NODE_PORT=8080 node src/index.js",
+    "build-local-image": "docker build --tag=registry.rapidops.com/$IMAGE -f Dockerfile . && docker push registry.rapidops.com/$IMAGE",
+    "lint": "eslint src/**/*.js",
+    "generate-deployment-files": "node deploy/create-deployment-yml-files.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git@gitssh.rapidops.com:salesmate/service-template.git"
+  },
+  "author": "Dipesh Patel",
+  "license": "ISC",
+  "dependencies": {
+    "@hapi/joi": "^17.1.1",
+    "axios": "^0.19.0",
+    "bfj": "^7.0.2",
+    "cucumber-teamcity-formatter": "^2.0.1",
+    "http-server": "git+ssh://git@gitssh.rapidops.com:salesmate/http-server.git",
+    "json-format": "^1.0.1",
+    "lodash": "^4.17.15",
+    "moment": "^2.24.0",
+    "moment-recur": "^1.0.7",
+    "moment-timezone": "^0.5.28",
+    "pg": "^7.18.2",
+    "q": "^1.5.1",
+    "sequelize": "^6.6.2",
+    "umzug": "^2.3.0",
+    "utilities": "git+ssh://git@gitssh.rapidops.com:salesmate/utilities.git"
+  },
+  "devDependencies": {
+    "chai": "^4.2.0",
+    "cucumber": "^6.0.5",
+    "cucumber-junit": "^1.7.1",
+    "eslint": "^6.8.0",
+    "eslint-config-google": "^0.14.0",
+    "husky": "^4.2.5",
+    "nyc": "^15.1.0",
+    "sinon": "^9.0.1"
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "bash pre-commit-eslint.sh"
+    }
+  }
+}

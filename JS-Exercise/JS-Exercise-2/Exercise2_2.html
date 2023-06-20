@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <script>
+        // JavaScript​ ​ program​ ​ which​ ​ accepts​ ​ a ​ ​ number​​ as​ ​ input​ ​ and​ ​ insert​ ​ dashes​ ​ (-) between​ ​ each​ ​ two​ ​ even​ ​ numbers.
+
+        let n = prompt("n= ","02544168");
+        let a = n.length;
+
+        let str = "";   
+
+        for(i = 0;i<a;i++){
+            if(n[i]%2 ==0 && n[i+1]%2 == 0){
+                str+= n[i]+"-";
+            }
+            else{
+                str+=n[i];
+            }
+        }
+        alert(str);
+
+    </script>
+</body>
+</html>

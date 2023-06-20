@@ -1,0 +1,47 @@
+{
+  "extends": [
+    "eslint:recommended",
+    "google"
+  ],
+  "parserOptions": {
+    "ecmaVersion": 9
+  },
+  "env": {
+    "node": true,
+    "es2017": true
+  },
+  "ecmaFeatures": {
+    "destructuring": true
+  },
+  "rules": {
+    "max-len": [
+      2,
+      {
+        "code": 120,
+        "ignoreUrls": true,
+        "tabWidth": 2
+      }
+    ],
+    "require-jsdoc": 0
+  },
+  "overrides": [
+    {
+      "files": [
+        "*.spec.js"
+      ],
+      "rules": {
+        "new-cap": [
+          "error",
+          {
+            "capIsNewExceptions": [
+              "When",
+              "Then",
+              "Given"
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "ignorePatterns": ["**/*.ejs"]
+}

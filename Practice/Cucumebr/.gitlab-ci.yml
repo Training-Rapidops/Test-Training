@@ -1,0 +1,2112 @@
+variables:
+  VERSION: $CI_PIPELINE_ID
+  IMAGE_TAG: $CI_COMMIT_REF_NAME-$CI_PIPELINE_ID
+  IMAGE_NAME: $CI_PROJECT_NAME
+  GIT_SUBMODULE_STRATEGY: recursive
+
+# image: shaggy219/aws-google-sdk:v1
+stages:
+  - Static Analysis
+  - Test
+  - Build Image
+  - Create missing topics
+  - Run CockroachDB Migrations
+  - Deploy YAMLs
+
+cache:
+  key: ${CI_COMMIT_REF_SLUG}
+  paths:
+    - .npm/
+    - node_modules
+
+before_script:
+  - 'which ssh-agent || ( apt-get install -qq openssh-client )'
+  - eval $(ssh-agent -s)
+  - ssh-add <(echo "$SSH_PRIVATE_KEY")
+  - mkdir -p ~/.ssh
+  - '[[ -f /.dockerenv ]] && echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config'
+  - ssh-keyscan gitssh.rapidops.com >> ~/.ssh/known_hosts
+  - source /home/gitlab-runner/.bash_profile
+  - nvm use 12
+
+
+lint:
+  stage: Static Analysis
+  script:
+    - npm i --cache .npm --prefer-offline
+    - npm run lint
+  when: always
+  only:
+    - merge_requests
+  tags:
+    - salesmate-ci
+
+
+unit-test:
+  stage: Test
+  script:
+    - npm i --cache .npm --prefer-offline
+    - npm run test
+    - test -f junit.xml && grep -L "<failure" junit.xml
+  needs:
+    - lint
+  artifacts:
+    when: always
+    paths:
+      - coverage
+    reports:
+      junit:
+        - junit.xml
+      cobertura:
+        - coverage/cobertura-coverage.xml
+    expire_in: 4 days
+  only:
+    - merge_requests
+  tags:
+    - salesmate-ci
+
+build-prod:
+  stage: Build Image
+  script:
+    - echo "$GOOGLE_KEY_PROD" > prod_key.json
+    - sudo gcloud auth activate-service-account --project $PROJECT_ID --key-file=prod_key.json
+    - sudo gcloud auth configure-docker
+    - echo Building the Docker image...
+    - IMAGE_TAG=`echo $IMAGE_TAG | sed -e 's/\//-/g'`
+    - sudo docker build -t gcr.io/$PROJECT_ID/$IMAGE_NAME:$IMAGE_TAG -t registry.rapidops.com/$IMAGE_NAME:latest --file Dockerfile .
+    - sudo docker push gcr.io/$PROJECT_ID/$IMAGE_NAME:$IMAGE_TAG
+    - sudo docker push registry.rapidops.com/$IMAGE_NAME:latest
+    - if [[ $(sudo docker images 'gcr.io/'$PROJECT_ID'/'$IMAGE_NAME'' -a -q | tail -n +6 && sudo docker images 'registry.rapidops.com/'$PROJECT_ID'/'$IMAGE_NAME'' -a -q | tail -n +6) ]]; then sudo docker rmi -f $(sudo docker images 'gcr.io/'$PROJECT_ID'/'$IMAGE_NAME'' -a -q | tail -n +6 && sudo docker images 'registry.rapidops.com/'$PROJECT_ID'/'$IMAGE_NAME'' -a -q | tail -n +6); else echo 0; fi
+  only:
+    - master
+    - /^master-us-[0-9]+(?:.[0-9]+)+$/
+    - /^master-eu-[0-9]+(?:.[0-9]+)+$/
+    - /^hotfix\/[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+  tags:
+    - salesmate-ci
+
+################ Build Dev ########################
+######################################################
+build-dev:
+  stage: Build Image
+  script:
+    - echo "$GOOGLE_KEY_DEV" > dev_key.json
+    - sudo gcloud auth activate-service-account --project $DEV_PROJECT_ID --key-file=dev_key.json
+    - sudo gcloud auth configure-docker
+    - echo Building the Docker image...
+    - IMAGE_TAG=`echo $IMAGE_TAG | sed -e 's/\//-/g'`
+    - sudo docker build -t gcr.io/$DEV_PROJECT_ID/$IMAGE_NAME:$IMAGE_TAG -t registry.rapidops.com/$IMAGE_NAME:$IMAGE_TAG --file Dockerfile .
+    - sudo docker push gcr.io/$DEV_PROJECT_ID/$IMAGE_NAME:$IMAGE_TAG
+    - sudo docker push registry.rapidops.com/$IMAGE_NAME:$IMAGE_TAG
+    - if [[ $(sudo docker images 'gcr.io/'$DEV_PROJECT_ID'/'$IMAGE_NAME'' -a -q | tail -n +6 && sudo docker images 'registry.rapidops.com/'$IMAGE_NAME'' -a -q | tail -n +6) ]]; then sudo docker rmi -f $(sudo docker images 'gcr.io/'$STAGING_PROJECT_ID'/'$IMAGE_NAME'' -a -q | tail -n +6 && sudo docker images 'registry.rapidops.com/'$IMAGE_NAME'' -a -q | tail -n +6); else echo 0; fi
+  only:
+    - develop
+    - /^develop-[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+    - /^feature\/[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+    - /^Feature\/[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+  tags:
+    - salesmate-ci
+
+################ Build devenv1 ########################
+######################################################
+
+build-devenv1:
+  stage: Build Image
+  script:
+    - echo "$GOOGLE_KEY_DEV" > dev_key.json
+    - sudo gcloud auth activate-service-account --project $DEV_PROJECT_ID --key-file=dev_key.json
+    - sudo gcloud auth configure-docker
+    - echo Building the Docker image...
+    - IMAGE_TAG=`echo $IMAGE_TAG | sed -e 's/\//-/g'`
+    - sudo docker build -t gcr.io/$DEV_PROJECT_ID/$IMAGE_NAME:$IMAGE_TAG --file Dockerfile .
+    - sudo docker push gcr.io/$DEV_PROJECT_ID/$IMAGE_NAME:$IMAGE_TAG
+    - if [[ $(sudo docker images 'gcr.io/'$DEV_PROJECT_ID'/'$IMAGE_NAME'' -a -q | tail -n +6 && sudo docker images 'registry.rapidops.com/'$IMAGE_NAME'' -a -q | tail -n +6) ]]; then sudo docker rmi -f $(sudo docker images 'gcr.io/'$STAGING_PROJECT_ID'/'$IMAGE_NAME'' -a -q | tail -n +6 && sudo docker images 'registry.rapidops.com/'$IMAGE_NAME'' -a -q | tail -n +6); else echo 0; fi
+  only:
+    - /^devenv1\/feature\-[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+    - /^Devenv1\/feature\-[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+  tags:
+    - salesmate-ci
+
+################ Build devenv2 ########################
+######################################################
+
+build-devenv2:
+  stage: Build Image
+  script:
+    - echo "$GOOGLE_KEY_DEV" > dev_key.json
+    - sudo gcloud auth activate-service-account --project $DEV_PROJECT_ID --key-file=dev_key.json
+    - sudo gcloud auth configure-docker
+    - echo Building the Docker image...
+    - IMAGE_TAG=`echo $IMAGE_TAG | sed -e 's/\//-/g'`
+    - sudo docker build -t gcr.io/$DEV_PROJECT_ID/$IMAGE_NAME:$IMAGE_TAG --file Dockerfile .
+    - sudo docker push gcr.io/$DEV_PROJECT_ID/$IMAGE_NAME:$IMAGE_TAG
+    - if [[ $(sudo docker images 'gcr.io/'$DEV_PROJECT_ID'/'$IMAGE_NAME'' -a -q | tail -n +6 && sudo docker images 'registry.rapidops.com/'$IMAGE_NAME'' -a -q | tail -n +6) ]]; then sudo docker rmi -f $(sudo docker images 'gcr.io/'$STAGING_PROJECT_ID'/'$IMAGE_NAME'' -a -q | tail -n +6 && sudo docker images 'registry.rapidops.com/'$IMAGE_NAME'' -a -q | tail -n +2); else echo 0; fi
+  only:
+    - /^devenv2\/feature\-[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+    - /^Devenv2\/feature\-[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+  tags:
+    - salesmate-ci
+
+################ Build devenv3 ########################
+######################################################
+
+build-devenv3:
+  stage: Build Image
+  script:
+    - echo "$GOOGLE_KEY_DEV" > dev_key.json
+    - sudo gcloud auth activate-service-account --project $DEV_PROJECT_ID --key-file=dev_key.json
+    - sudo gcloud auth configure-docker
+    - echo Building the Docker image...
+    - IMAGE_TAG=`echo $IMAGE_TAG | sed -e 's/\//-/g'`
+    - sudo docker build -t gcr.io/$DEV_PROJECT_ID/$IMAGE_NAME:$IMAGE_TAG --file Dockerfile .
+    - sudo docker push gcr.io/$DEV_PROJECT_ID/$IMAGE_NAME:$IMAGE_TAG
+    - if [[ $(sudo docker images 'gcr.io/'$DEV_PROJECT_ID'/'$IMAGE_NAME'' -a -q | tail -n +6 && sudo docker images 'registry.rapidops.com/'$IMAGE_NAME'' -a -q | tail -n +6) ]]; then sudo docker rmi -f $(sudo docker images 'gcr.io/'$STAGING_PROJECT_ID'/'$IMAGE_NAME'' -a -q | tail -n +6 && sudo docker images 'registry.rapidops.com/'$IMAGE_NAME'' -a -q | tail -n +6); else echo 0; fi
+  only:
+    - /^devenv3\/feature\-[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+    - /^Devenv3\/feature\-[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+  tags:
+    - salesmate-ci
+
+################ Build devenv4 ########################
+######################################################
+
+build-devenv4:
+  stage: Build Image
+  script:
+    - echo "$GOOGLE_KEY_DEV" > dev_key.json
+    - sudo gcloud auth activate-service-account --project $DEV_PROJECT_ID --key-file=dev_key.json
+    - sudo gcloud auth configure-docker
+    - echo Building the Docker image...
+    - IMAGE_TAG=`echo $IMAGE_TAG | sed -e 's/\//-/g'`
+    - sudo docker build -t gcr.io/$DEV_PROJECT_ID/$IMAGE_NAME:$IMAGE_TAG --file Dockerfile .
+    - sudo docker push gcr.io/$DEV_PROJECT_ID/$IMAGE_NAME:$IMAGE_TAG
+    - if [[ $(sudo docker images 'gcr.io/'$DEV_PROJECT_ID'/'$IMAGE_NAME'' -a -q | tail -n +6 && sudo docker images 'registry.rapidops.com/'$IMAGE_NAME'' -a -q | tail -n +6) ]]; then sudo docker rmi -f $(sudo docker images 'gcr.io/'$STAGING_PROJECT_ID'/'$IMAGE_NAME'' -a -q | tail -n +6 && sudo docker images 'registry.rapidops.com/'$IMAGE_NAME'' -a -q | tail -n +6); else echo 0; fi
+  only:
+    - /^devenv4\/feature\-[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+    - /^Devenv4\/feature\-[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+  tags:
+    - salesmate-ci
+
+################ Build devenv5 ########################
+######################################################
+
+build-devenv5:
+  stage: Build Image
+  script:
+    - echo "$GOOGLE_KEY_DEV" > dev_key.json
+    - sudo gcloud auth activate-service-account --project $DEV_PROJECT_ID --key-file=dev_key.json
+    - sudo gcloud auth configure-docker
+    - echo Building the Docker image...
+    - IMAGE_TAG=`echo $IMAGE_TAG | sed -e 's/\//-/g'`
+    - sudo docker build -t gcr.io/$DEV_PROJECT_ID/$IMAGE_NAME:$IMAGE_TAG --file Dockerfile .
+    - sudo docker push gcr.io/$DEV_PROJECT_ID/$IMAGE_NAME:$IMAGE_TAG
+    - if [[ $(sudo docker images 'gcr.io/'$DEV_PROJECT_ID'/'$IMAGE_NAME'' -a -q | tail -n +6 && sudo docker images 'registry.rapidops.com/'$IMAGE_NAME'' -a -q | tail -n +6) ]]; then sudo docker rmi -f $(sudo docker images 'gcr.io/'$STAGING_PROJECT_ID'/'$IMAGE_NAME'' -a -q | tail -n +6 && sudo docker images 'registry.rapidops.com/'$IMAGE_NAME'' -a -q | tail -n +6); else echo 0; fi
+  only:
+    - /^devenv5\/feature\-[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+    - /^Devenv5\/feature\-[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+  tags:
+    - salesmate-ci
+
+################ Build Staging ########################
+######################################################
+build-staging:
+  stage: Build Image
+  script:
+    - echo "$GOOGLE_KEY_STAGING" > staging_key.json
+    - sudo gcloud auth activate-service-account --project $STAGING_PROJECT_ID --key-file=staging_key.json
+    - sudo gcloud auth configure-docker
+    - echo Building the Docker image...
+    - IMAGE_TAG=`echo $IMAGE_TAG | sed -e 's/\//-/g'`
+    - sudo docker build -t gcr.io/$STAGING_PROJECT_ID/$IMAGE_NAME:$IMAGE_TAG -t registry.rapidops.com/$IMAGE_NAME:$IMAGE_TAG --file Dockerfile .
+    - sudo docker push gcr.io/$STAGING_PROJECT_ID/$IMAGE_NAME:$IMAGE_TAG
+    - sudo docker push registry.rapidops.com/$IMAGE_NAME:$IMAGE_TAG
+    - if [[ $(sudo docker images 'gcr.io/'$STAGING_PROJECT_ID'/'$IMAGE_NAME'' -a -q | tail -n +6 && sudo docker images 'registry.rapidops.com/'$IMAGE_NAME'' -a -q | tail -n +6) ]]; then sudo docker rmi -f $(sudo docker images 'gcr.io/'$STAGING_PROJECT_ID'/'$IMAGE_NAME'' -a -q | tail -n +6 && sudo docker images 'registry.rapidops.com/'$IMAGE_NAME'' -a -q | tail -n +6); else echo 0; fi
+  only:
+    - staging
+    - /^staging-[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+    - master
+    - /^master-us-[0-9]+(?:.[0-9]+)+$/
+  tags:
+    - salesmate-ci
+
+
+    ########################################### Dev Deployment ###################################
+    ########################################################################################
+
+build-staging-hotfix:
+  stage: Build Image
+  script:
+    - echo "$GOOGLE_KEY_STAGING" > staging_key.json
+    - sudo gcloud auth activate-service-account --project $STAGING_PROJECT_ID --key-file=staging_key.json
+    - sudo gcloud auth configure-docker
+    - echo Building the Docker image...
+    - IMAGE_TAG=`echo $IMAGE_TAG | sed -e 's/\//-/g'`
+    - sudo docker build -t gcr.io/$STAGING_PROJECT_ID/$IMAGE_NAME:$IMAGE_TAG -t registry.rapidops.com/$IMAGE_NAME:$IMAGE_TAG --file Dockerfile .
+    - sudo docker push gcr.io/$STAGING_PROJECT_ID/$IMAGE_NAME:$IMAGE_TAG
+    - sudo docker push registry.rapidops.com/$IMAGE_NAME:$IMAGE_TAG
+    - if [[ $(sudo docker images 'gcr.io/'$STAGING_PROJECT_ID'/'$IMAGE_NAME'' -a -q | tail -n +6 && sudo docker images 'registry.rapidops.com/'$IMAGE_NAME'' -a -q | tail -n +6) ]]; then sudo docker rmi -f $(sudo docker images 'gcr.io/'$STAGING_PROJECT_ID'/'$IMAGE_NAME'' -a -q | tail -n +6 && sudo docker images 'registry.rapidops.com/'$IMAGE_NAME'' -a -q | tail -n +6); else echo 0; fi
+  only:
+    - /^hotfix\/[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+  tags:
+    - salesmate-ci
+
+
+    ########################################### Dev Deployment ###################################
+    ########################################################################################
+
+########################################### dev deployment ###################################
+########################################################################################
+
+create_missing_topics_dev:
+  stage: Create missing topics
+  script:
+    - echo "$GOOGLE_KEY_DEV" > dev_key.json
+    - sudo gcloud auth activate-service-account --project $DEV_PROJECT_ID --key-file=dev_key.json
+    - IMAGE_TAG=`echo $IMAGE_TAG | sed -e 's/\//-/g'`
+    - npm i lodash --cache .npm --prefer-offline
+    - npm i json-format --cache .npm --prefer-offline
+    - sudo gcloud container clusters get-credentials $DEV_GKE_CLUSTER --region $GKE_REGION_DEV --project $DEV_PROJECT_ID
+    - node deploy/create-deployment-yml-files.js dev us dev-apps CreateMissingTopics
+    - sleep 3s
+    - sudo kubectl config set-context --current --namespace=dev-apps
+    - sudo kubectl config current-context
+    - /usr/bin/bash apply-server-deployments.sh
+  needs:
+    - build-dev
+  environment:
+    name: dev
+    url: https://accounts-dev.salesmate.io
+  only:
+    - develop
+    - /^develop-[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+    - /^feature\/[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+    - /^Feature\/[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+  tags:
+    - salesmate-ci
+
+run_cockroachdb_migrations_dev:
+  stage: Run CockroachDB Migrations
+  script:
+    - echo "$GOOGLE_KEY_DEV" > dev_key.json
+    - sudo gcloud auth activate-service-account --project $DEV_PROJECT_ID --key-file=dev_key.json
+    - IMAGE_TAG=`echo $IMAGE_TAG | sed -e 's/\//-/g'`
+    - npm i lodash --cache .npm --prefer-offline
+    - npm i json-format --cache .npm --prefer-offline
+    - sudo gcloud container clusters get-credentials $DEV_GKE_CLUSTER --region $GKE_REGION_DEV --project $DEV_PROJECT_ID
+    - node deploy/create-deployment-yml-files.js dev us dev-apps RunCockroachDbMigrations
+    - sleep 3s
+    - sudo kubectl config set-context --current --namespace=dev-apps
+    - sudo kubectl config current-context
+    - /usr/bin/bash apply-server-deployments.sh
+  needs:
+    - create_missing_topics_dev
+  environment:
+    name: dev
+    url: https://accounts-dev.salesmate.io
+  only:
+    - develop
+    - /^develop-[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+    - /^feature\/[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+    - /^Feature\/[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+  tags:
+    - salesmate-ci
+
+deploy_server_on_dev:
+  stage: Deploy YAMLs
+  script:
+    - echo "$GOOGLE_KEY_DEV" > dev_key.json
+    - sudo gcloud auth activate-service-account --project $DEV_PROJECT_ID --key-file=dev_key.json
+    - IMAGE_TAG=`echo $IMAGE_TAG | sed -e 's/\//-/g'`
+    - npm i lodash --cache .npm --prefer-offline
+    - npm i json-format --cache .npm --prefer-offline
+    - node deploy/create-deployment-yml-files.js dev us dev-apps
+    - sudo gcloud container clusters get-credentials $DEV_GKE_CLUSTER --region $GKE_REGION_DEV --project $DEV_PROJECT_ID
+    - sleep 3s
+    - sudo kubectl config set-context --current --namespace=dev-apps
+    - sudo kubectl config current-context
+    - /usr/bin/bash apply-server-deployments.sh
+    #- sudo kubectl apply -f deploy/ymls/deployments -R
+    #- sudo kubectl apply -f deploy/ymls/crons -R
+    #- sudo kubectl apply -f deploy/ymls/networking -R
+  needs:
+    - run_cockroachdb_migrations_dev
+  environment:
+    name: dev
+    url: https://accounts-dev.salesmate.io
+  only:
+    - develop
+    - /^develop-[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+    - /^feature\/[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+    - /^Feature\/[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+  tags:
+    - salesmate-ci
+
+deploy_jobs_on_dev:
+  stage: Deploy YAMLs
+  script:
+    - echo "$GOOGLE_KEY_DEV" > dev_key.json
+    - sudo gcloud auth activate-service-account --project $DEV_PROJECT_ID --key-file=dev_key.json
+    - IMAGE_TAG=`echo $IMAGE_TAG | sed -e 's/\//-/g'`
+    - npm i lodash --cache .npm --prefer-offline
+    - npm i json-format --cache .npm --prefer-offline
+    - node deploy/create-deployment-yml-files.js dev us dev-apps
+    - sudo gcloud container clusters get-credentials $DEV_GKE_CLUSTER --region $GKE_REGION_DEV --project $DEV_PROJECT_ID
+    - sleep 3s
+    - sudo kubectl config set-context --current --namespace=dev-apps
+    - sudo kubectl config current-context
+    - /usr/bin/bash apply-job-deployments.sh
+    #- sudo kubectl apply -f deploy/ymls/deployments -R
+    #- sudo kubectl apply -f deploy/ymls/crons -R
+    #- sudo kubectl apply -f deploy/ymls/networking -R
+  needs:
+    - run_cockroachdb_migrations_dev
+  environment:
+    name: dev
+    url: https://accounts-dev.salesmate.io
+  only:
+    - develop
+    - /^develop-[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+    - /^feature\/[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+    - /^Feature\/[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+  tags:
+    - salesmate-ci
+
+deploy_crons_on_dev:
+  stage: Deploy YAMLs
+  script:
+    - echo "$GOOGLE_KEY_DEV" > dev_key.json
+    - sudo gcloud auth activate-service-account --project $DEV_PROJECT_ID --key-file=dev_key.json
+    - IMAGE_TAG=`echo $IMAGE_TAG | sed -e 's/\//-/g'`
+    - npm i lodash --cache .npm --prefer-offline
+    - npm i json-format --cache .npm --prefer-offline
+    - node deploy/create-deployment-yml-files.js dev us dev-apps
+    - sudo gcloud container clusters get-credentials $DEV_GKE_CLUSTER --region $GKE_REGION_DEV --project $DEV_PROJECT_ID
+    - sleep 3s
+    - sudo kubectl config set-context --current --namespace=dev-apps
+    - sudo kubectl config current-context
+    - /usr/bin/bash apply-cron-deployments.sh
+    #- sudo kubectl apply -f deploy/ymls/deployments -R
+    #- sudo kubectl apply -f deploy/ymls/crons -R
+    #- sudo kubectl apply -f deploy/ymls/networking -R
+  needs:
+    - run_cockroachdb_migrations_dev
+  environment:
+    name: dev
+    url: https://accounts-dev.salesmate.io
+  only:
+    - develop
+    - /^develop-[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+    - /^feature\/[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+    - /^Feature\/[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+  tags:
+    - salesmate-ci
+
+deploy_services_on_dev:
+  stage: Deploy YAMLs
+  script:
+    - echo "$GOOGLE_KEY_DEV" > dev_key.json
+    - sudo gcloud auth activate-service-account --project $DEV_PROJECT_ID --key-file=dev_key.json
+    - IMAGE_TAG=`echo $IMAGE_TAG | sed -e 's/\//-/g'`
+    - npm i lodash --cache .npm --prefer-offline
+    - npm i json-format --cache .npm --prefer-offline
+    - node deploy/create-deployment-yml-files.js dev us dev-apps
+    - sudo gcloud container clusters get-credentials $DEV_GKE_CLUSTER --region $GKE_REGION_DEV --project $DEV_PROJECT_ID
+    - sleep 3s
+    - sudo kubectl config set-context --current --namespace=dev-apps
+    - sudo kubectl config current-context
+    - /usr/bin/bash apply-service-deployments.sh
+    #- sudo kubectl apply -f deploy/ymls/deployments -R
+    #- sudo kubectl apply -f deploy/ymls/crons -R
+    #- sudo kubectl apply -f deploy/ymls/networking -R
+  needs:
+    - run_cockroachdb_migrations_dev
+  environment:
+    name: dev
+    url: https://accounts-dev.salesmate.io
+  only:
+    - develop
+    - /^develop-[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+    - /^feature\/[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+    - /^Feature\/[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+  tags:
+    - salesmate-ci
+
+deploy_virtual_services_on_dev:
+  stage: Deploy YAMLs
+  script:
+    - echo "$GOOGLE_KEY_DEV" > dev_key.json
+    - sudo gcloud auth activate-service-account --project $DEV_PROJECT_ID --key-file=dev_key.json
+    - IMAGE_TAG=`echo $IMAGE_TAG | sed -e 's/\//-/g'`
+    - npm i lodash --cache .npm --prefer-offline
+    - npm i json-format --cache .npm --prefer-offline
+    - node deploy/create-deployment-yml-files.js dev us dev-apps
+    - sudo gcloud container clusters get-credentials $DEV_GKE_CLUSTER --region $GKE_REGION_DEV --project $DEV_PROJECT_ID
+    - sleep 3s
+    - sudo kubectl config set-context --current --namespace=dev-apps
+    - sudo kubectl config current-context
+    - /usr/bin/bash apply-virtual-service-deployments.sh
+    #- sudo kubectl apply -f deploy/ymls/deployments -R
+    #- sudo kubectl apply -f deploy/ymls/crons -R
+    #- sudo kubectl apply -f deploy/ymls/networking -R
+  needs:
+    - run_cockroachdb_migrations_dev
+  environment:
+    name: dev
+    url: https://accounts-dev.salesmate.io
+  only:
+    - develop
+    - /^develop-[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+    - /^feature\/[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+    - /^Feature\/[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+  tags:
+    - salesmate-ci
+
+########################################### devenv1 deployment ###################################
+########################################################################################
+
+create_missing_topics_devenv1:
+  stage: Create missing topics
+  script:
+    - echo "$GOOGLE_KEY_DEV" > dev_key.json
+    - sudo gcloud auth activate-service-account --project $DEV_PROJECT_ID --key-file=dev_key.json
+    - IMAGE_TAG=`echo $IMAGE_TAG | sed -e 's/\//-/g'`
+    - npm i lodash --cache .npm --prefer-offline
+    - npm i json-format --cache .npm --prefer-offline
+    - sudo gcloud container clusters get-credentials $DEV1_GKE_CLUSTER --region $GKE_REGION_DEV --project $DEV_PROJECT_ID
+    - node deploy/create-deployment-yml-files.js devenv1 us devenv1-apps CreateMissingTopics
+    - sleep 3s
+    - sudo kubectl config set-context --current --namespace=devenv1-apps
+    - sudo kubectl config current-context
+    - /usr/bin/bash apply-server-deployments.sh
+  needs:
+    - build-devenv1
+  environment:
+    name: devenv1
+    url: https://accounts-devenv1.salesmate.io
+  only:
+    - /^devenv1\/feature\-[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+    - /^Devenv1\/feature\-[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+  tags:
+    - salesmate-ci
+
+run_cockroachdb_migrations_devenv1:
+  stage: Run CockroachDB Migrations
+  script:
+    - echo "$GOOGLE_KEY_DEV" > dev_key.json
+    - sudo gcloud auth activate-service-account --project $DEV_PROJECT_ID --key-file=dev_key.json
+    - IMAGE_TAG=`echo $IMAGE_TAG | sed -e 's/\//-/g'`
+    - npm i lodash --cache .npm --prefer-offline
+    - npm i json-format --cache .npm --prefer-offline
+    - sudo gcloud container clusters get-credentials $DEV1_GKE_CLUSTER --region $GKE_REGION_DEV --project $DEV_PROJECT_ID
+    - node deploy/create-deployment-yml-files.js devenv1 us devenv1-apps RunCockroachDbMigrations
+    - sleep 3s
+    - sudo kubectl config set-context --current --namespace=devenv1-apps
+    - sudo kubectl config current-context
+    - /usr/bin/bash apply-server-deployments.sh
+  needs:
+    - create_missing_topics_devenv1
+  environment:
+    name: devenv1
+    url: https://accounts-devenv1.salesmate.io
+  only:
+    - /^devenv1\/feature\-[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+    - /^Devenv1\/feature\-[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+  tags:
+    - salesmate-ci
+
+deploy_server_on_devenv1:
+  stage: Deploy YAMLs
+  script:
+    - echo "$GOOGLE_KEY_DEV" > dev_key.json
+    - sudo gcloud auth activate-service-account --project $DEV_PROJECT_ID --key-file=dev_key.json
+    - IMAGE_TAG=`echo $IMAGE_TAG | sed -e 's/\//-/g'`
+    - npm i lodash --cache .npm --prefer-offline
+    - npm i json-format --cache .npm --prefer-offline
+    - node deploy/create-deployment-yml-files.js devenv1 us devenv1-apps
+    - sudo gcloud container clusters get-credentials $DEV1_GKE_CLUSTER --region $GKE_REGION_DEV --project $DEV_PROJECT_ID
+    - sleep 3s
+    - sudo kubectl config set-context --current --namespace=devenv1-apps
+    - sudo kubectl config current-context
+    - /usr/bin/bash apply-server-deployments.sh
+    #- sudo kubectl apply -f deploy/ymls/deployments -R
+    #- sudo kubectl apply -f deploy/ymls/crons -R
+    #- sudo kubectl apply -f deploy/ymls/networking -R
+  needs:
+    - run_cockroachdb_migrations_devenv1
+  environment:
+    name: devenv1
+    url: https://accounts-devenv1.salesmate.io
+  only:
+    - /^devenv1\/feature\-[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+    - /^Devenv1\/feature\-[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+  tags:
+    - salesmate-ci
+
+deploy_jobs_on_devenv1:
+  stage: Deploy YAMLs
+  script:
+    - echo "$GOOGLE_KEY_DEV" > dev_key.json
+    - sudo gcloud auth activate-service-account --project $DEV_PROJECT_ID --key-file=dev_key.json
+    - IMAGE_TAG=`echo $IMAGE_TAG | sed -e 's/\//-/g'`
+    - npm i lodash --cache .npm --prefer-offline
+    - npm i json-format --cache .npm --prefer-offline
+    - node deploy/create-deployment-yml-files.js devenv1 us devenv1-apps
+    - sudo gcloud container clusters get-credentials $DEV1_GKE_CLUSTER --region $GKE_REGION_DEV --project $DEV_PROJECT_ID
+    - sleep 3s
+    - sudo kubectl config set-context --current --namespace=devenv1-apps
+    - sudo kubectl config current-context
+    - /usr/bin/bash apply-job-deployments.sh
+    #- sudo kubectl apply -f deploy/ymls/deployments -R
+    #- sudo kubectl apply -f deploy/ymls/crons -R
+    #- sudo kubectl apply -f deploy/ymls/networking -R
+  needs:
+    - run_cockroachdb_migrations_devenv1
+  environment:
+    name: devenv1
+    url: https://accounts-devenv1.salesmate.io
+  only:
+    - /^devenv1\/feature\-[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+    - /^Devenv1\/feature\-[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+  tags:
+    - salesmate-ci
+
+deploy_crons_on_devenv1:
+  stage: Deploy YAMLs
+  script:
+    - echo "$GOOGLE_KEY_DEV" > dev_key.json
+    - sudo gcloud auth activate-service-account --project $DEV_PROJECT_ID --key-file=dev_key.json
+    - IMAGE_TAG=`echo $IMAGE_TAG | sed -e 's/\//-/g'`
+    - npm i lodash --cache .npm --prefer-offline
+    - npm i json-format --cache .npm --prefer-offline
+    - node deploy/create-deployment-yml-files.js devenv1 us dev-apps
+    - sudo gcloud container clusters get-credentials $DEV1_GKE_CLUSTER --region $GKE_REGION_DEV --project $DEV_PROJECT_ID
+    - sleep 3s
+    - sudo kubectl config set-context --current --namespace=devenv1-apps
+    - sudo kubectl config current-context
+    - /usr/bin/bash apply-cron-deployments.sh
+    #- sudo kubectl apply -f deploy/ymls/deployments -R
+    #- sudo kubectl apply -f deploy/ymls/crons -R
+    #- sudo kubectl apply -f deploy/ymls/networking -R
+  needs:
+    - run_cockroachdb_migrations_devenv1
+  environment:
+    name: devenv1
+    url: https://accounts-devenv1.salesmate.io
+  only:
+    - /^devenv1\/feature\-[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+    - /^Devenv1\/feature\-[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+  tags:
+    - salesmate-ci
+
+deploy_services_on_devenv1:
+  stage: Deploy YAMLs
+  script:
+    - echo "$GOOGLE_KEY_DEV" > dev_key.json
+    - sudo gcloud auth activate-service-account --project $DEV_PROJECT_ID --key-file=dev_key.json
+    - IMAGE_TAG=`echo $IMAGE_TAG | sed -e 's/\//-/g'`
+    - npm i lodash --cache .npm --prefer-offline
+    - npm i json-format --cache .npm --prefer-offline
+    - node deploy/create-deployment-yml-files.js devenv1 us devenv1-apps
+    - sudo gcloud container clusters get-credentials $DEV1_GKE_CLUSTER --region $GKE_REGION_DEV --project $DEV_PROJECT_ID
+    - sleep 3s
+    - sudo kubectl config set-context --current --namespace=devenv1-apps
+    - sudo kubectl config current-context
+    - /usr/bin/bash apply-service-deployments.sh
+    #- sudo kubectl apply -f deploy/ymls/deployments -R
+    #- sudo kubectl apply -f deploy/ymls/crons -R
+    #- sudo kubectl apply -f deploy/ymls/networking -R
+  needs:
+    - run_cockroachdb_migrations_devenv1
+  environment:
+    name: devenv1
+    url: https://accounts-devenv1.salesmate.io
+  only:
+    - /^devenv1\/feature\-[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+    - /^Devenv1\/feature\-[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+  tags:
+    - salesmate-ci
+
+deploy_virtual_services_on_devenv1:
+  stage: Deploy YAMLs
+  script:
+    - echo "$GOOGLE_KEY_DEV" > dev_key.json
+    - sudo gcloud auth activate-service-account --project $DEV_PROJECT_ID --key-file=dev_key.json
+    - IMAGE_TAG=`echo $IMAGE_TAG | sed -e 's/\//-/g'`
+    - npm i lodash --cache .npm --prefer-offline
+    - npm i json-format --cache .npm --prefer-offline
+    - node deploy/create-deployment-yml-files.js devenv1 us dev-apps
+    - sudo gcloud container clusters get-credentials $DEV1_GKE_CLUSTER --region $GKE_REGION_DEV --project $DEV_PROJECT_ID
+    - sleep 3s
+    - sudo kubectl config set-context --current --namespace=devenv1-apps
+    - sudo kubectl config current-context
+    - /usr/bin/bash apply-virtual-service-deployments.sh
+    #- sudo kubectl apply -f deploy/ymls/deployments -R
+    #- sudo kubectl apply -f deploy/ymls/crons -R
+    #- sudo kubectl apply -f deploy/ymls/networking -R
+  needs:
+    - run_cockroachdb_migrations_devenv1
+  environment:
+    name: devenv1
+    url: https://accounts-dev.salesmate.io
+  only:
+    - /^devenv1\/feature\-[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+    - /^Devenv1\/feature\-[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+  tags:
+    - salesmate-ci
+
+
+########################################### devenv2 deployment ###################################
+########################################################################################
+
+create_missing_topics_devenv2:
+  stage: Create missing topics
+  script:
+    - echo "$GOOGLE_KEY_DEV" > dev_key.json
+    - sudo gcloud auth activate-service-account --project $DEV_PROJECT_ID --key-file=dev_key.json
+    - IMAGE_TAG=`echo $IMAGE_TAG | sed -e 's/\//-/g'`
+    - npm i lodash --cache .npm --prefer-offline
+    - npm i json-format --cache .npm --prefer-offline
+    - sudo gcloud container clusters get-credentials $DEV2_GKE_CLUSTER --region $GKE_REGION_DEV --project $DEV_PROJECT_ID
+    - node deploy/create-deployment-yml-files.js devenv2 us devenv2-apps CreateMissingTopics
+    - sleep 3s
+    - sudo kubectl config set-context --current --namespace=devenv2-apps
+    - sudo kubectl config current-context
+    - /usr/bin/bash apply-server-deployments.sh
+  needs:
+    - build-devenv2
+  environment:
+    name: devenv2
+    url: https://accounts-devenv2.salesmate.io
+  only:
+    - /^devenv2\/feature\-[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+    - /^Devenv2\/feature\-[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+  tags:
+    - salesmate-ci
+
+run_cockroachdb_migrations_devenv2:
+  stage: Run CockroachDB Migrations
+  script:
+    - echo "$GOOGLE_KEY_DEV" > dev_key.json
+    - sudo gcloud auth activate-service-account --project $DEV_PROJECT_ID --key-file=dev_key.json
+    - IMAGE_TAG=`echo $IMAGE_TAG | sed -e 's/\//-/g'`
+    - npm i lodash --cache .npm --prefer-offline
+    - npm i json-format --cache .npm --prefer-offline
+    - sudo gcloud container clusters get-credentials $DEV2_GKE_CLUSTER --region $GKE_REGION_DEV --project $DEV_PROJECT_ID
+    - node deploy/create-deployment-yml-files.js devenv2 us devenv2-apps RunCockroachDbMigrations
+    - sleep 3s
+    - sudo kubectl config set-context --current --namespace=devenv2-apps
+    - sudo kubectl config current-context
+    - /usr/bin/bash apply-server-deployments.sh
+  needs:
+    - create_missing_topics_devenv2
+  environment:
+    name: devenv2
+    url: https://accounts-devenv2.salesmate.io
+  only:
+    - /^devenv2\/feature\-[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+    - /^Devenv2\/feature\-[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+  tags:
+    - salesmate-ci
+
+deploy_server_on_devenv2:
+  stage: Deploy YAMLs
+  script:
+    - echo "$GOOGLE_KEY_DEV" > dev_key.json
+    - sudo gcloud auth activate-service-account --project $DEV_PROJECT_ID --key-file=dev_key.json
+    - IMAGE_TAG=`echo $IMAGE_TAG | sed -e 's/\//-/g'`
+    - npm i lodash --cache .npm --prefer-offline
+    - npm i json-format --cache .npm --prefer-offline
+    - node deploy/create-deployment-yml-files.js devenv2 us devenv2-apps
+    - sudo gcloud container clusters get-credentials $DEV2_GKE_CLUSTER --region $GKE_REGION_DEV --project $DEV_PROJECT_ID
+    - sleep 3s
+    - sudo kubectl config set-context --current --namespace=devenv2-apps
+    - sudo kubectl config current-context
+    - /usr/bin/bash apply-server-deployments.sh
+    #- sudo kubectl apply -f deploy/ymls/deployments -R
+    #- sudo kubectl apply -f deploy/ymls/crons -R
+    #- sudo kubectl apply -f deploy/ymls/networking -R
+  needs:
+    - run_cockroachdb_migrations_devenv2
+  environment:
+    name: devenv2
+    url: https://accounts-devenv2.salesmate.io
+  only:
+    - /^devenv2\/feature\-[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+    - /^Devenv2\/feature\-[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+  tags:
+    - salesmate-ci
+
+deploy_jobs_on_devenv2:
+  stage: Deploy YAMLs
+  script:
+    - echo "$GOOGLE_KEY_DEV" > dev_key.json
+    - sudo gcloud auth activate-service-account --project $DEV_PROJECT_ID --key-file=dev_key.json
+    - IMAGE_TAG=`echo $IMAGE_TAG | sed -e 's/\//-/g'`
+    - npm i lodash --cache .npm --prefer-offline
+    - npm i json-format --cache .npm --prefer-offline
+    - node deploy/create-deployment-yml-files.js devenv2 us devenv2-apps
+    - sudo gcloud container clusters get-credentials $DEV2_GKE_CLUSTER --region $GKE_REGION_DEV --project $DEV_PROJECT_ID
+    - sleep 3s
+    - sudo kubectl config set-context --current --namespace=devenv2-apps
+    - sudo kubectl config current-context
+    - /usr/bin/bash apply-job-deployments.sh
+    #- sudo kubectl apply -f deploy/ymls/deployments -R
+    #- sudo kubectl apply -f deploy/ymls/crons -R
+    #- sudo kubectl apply -f deploy/ymls/networking -R
+  needs:
+    - run_cockroachdb_migrations_devenv2
+  environment:
+    name: devenv2
+    url: https://accounts-devenv2.salesmate.io
+  only:
+    - /^devenv2\/feature\-[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+    - /^Devenv2\/feature\-[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+  tags:
+    - salesmate-ci
+
+deploy_crons_on_devenv2:
+  stage: Deploy YAMLs
+  script:
+    - echo "$GOOGLE_KEY_DEV" > dev_key.json
+    - sudo gcloud auth activate-service-account --project $DEV_PROJECT_ID --key-file=dev_key.json
+    - IMAGE_TAG=`echo $IMAGE_TAG | sed -e 's/\//-/g'`
+    - npm i lodash --cache .npm --prefer-offline
+    - npm i json-format --cache .npm --prefer-offline
+    - node deploy/create-deployment-yml-files.js devenv2 us dev-apps
+    - sudo gcloud container clusters get-credentials $DEV2_GKE_CLUSTER --region $GKE_REGION_DEV --project $DEV_PROJECT_ID
+    - sleep 3s
+    - sudo kubectl config set-context --current --namespace=devenv2-apps
+    - sudo kubectl config current-context
+    - /usr/bin/bash apply-cron-deployments.sh
+    #- sudo kubectl apply -f deploy/ymls/deployments -R
+    #- sudo kubectl apply -f deploy/ymls/crons -R
+    #- sudo kubectl apply -f deploy/ymls/networking -R
+  needs:
+    - run_cockroachdb_migrations_devenv2
+  environment:
+    name: devenv2
+    url: https://accounts-devenv2.salesmate.io
+  only:
+    - /^devenv2\/feature\-[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+    - /^Devenv2\/feature\-[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+  tags:
+    - salesmate-ci
+
+deploy_services_on_devenv2:
+  stage: Deploy YAMLs
+  script:
+    - echo "$GOOGLE_KEY_DEV" > dev_key.json
+    - sudo gcloud auth activate-service-account --project $DEV_PROJECT_ID --key-file=dev_key.json
+    - IMAGE_TAG=`echo $IMAGE_TAG | sed -e 's/\//-/g'`
+    - npm i lodash --cache .npm --prefer-offline
+    - npm i json-format --cache .npm --prefer-offline
+    - node deploy/create-deployment-yml-files.js devenv2 us devenv2-apps
+    - sudo gcloud container clusters get-credentials $DEV2_GKE_CLUSTER --region $GKE_REGION_DEV --project $DEV_PROJECT_ID
+    - sleep 3s
+    - sudo kubectl config set-context --current --namespace=devenv2-apps
+    - sudo kubectl config current-context
+    - /usr/bin/bash apply-service-deployments.sh
+    #- sudo kubectl apply -f deploy/ymls/deployments -R
+    #- sudo kubectl apply -f deploy/ymls/crons -R
+    #- sudo kubectl apply -f deploy/ymls/networking -R
+  needs:
+    - run_cockroachdb_migrations_devenv2
+  environment:
+    name: devenv2
+    url: https://accounts-devenv2.salesmate.io
+  only:
+    - /^devenv2\/feature\-[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+    - /^Devenv2\/feature\-[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+  tags:
+    - salesmate-ci
+
+deploy_virtual_services_on_devenv2:
+  stage: Deploy YAMLs
+  script:
+    - echo "$GOOGLE_KEY_DEV" > dev_key.json
+    - sudo gcloud auth activate-service-account --project $DEV_PROJECT_ID --key-file=dev_key.json
+    - IMAGE_TAG=`echo $IMAGE_TAG | sed -e 's/\//-/g'`
+    - npm i lodash --cache .npm --prefer-offline
+    - npm i json-format --cache .npm --prefer-offline
+    - node deploy/create-deployment-yml-files.js devenv2 us dev-apps
+    - sudo gcloud container clusters get-credentials $DEV2_GKE_CLUSTER --region $GKE_REGION_DEV --project $DEV_PROJECT_ID
+    - sleep 3s
+    - sudo kubectl config set-context --current --namespace=devenv2-apps
+    - sudo kubectl config current-context
+    - /usr/bin/bash apply-virtual-service-deployments.sh
+    #- sudo kubectl apply -f deploy/ymls/deployments -R
+    #- sudo kubectl apply -f deploy/ymls/crons -R
+    #- sudo kubectl apply -f deploy/ymls/networking -R
+  needs:
+    - run_cockroachdb_migrations_devenv2
+  environment:
+    name: devenv2
+    url: https://accounts-dev.salesmate.io
+  only:
+    - /^devenv2\/feature\-[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+    - /^Devenv2\/feature\-[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+  tags:
+    - salesmate-ci
+
+########################################### devenv3 deployment ###################################
+########################################################################################
+
+create_missing_topics_devenv3:
+  stage: Create missing topics
+  script:
+    - echo "$GOOGLE_KEY_DEV" > dev_key.json
+    - sudo gcloud auth activate-service-account --project $DEV_PROJECT_ID --key-file=dev_key.json
+    - IMAGE_TAG=`echo $IMAGE_TAG | sed -e 's/\//-/g'`
+    - npm i lodash --cache .npm --prefer-offline
+    - npm i json-format --cache .npm --prefer-offline
+    - sudo gcloud container clusters get-credentials $DEV3_GKE_CLUSTER --region $GKE_REGION_DEV --project $DEV_PROJECT_ID
+    - node deploy/create-deployment-yml-files.js devenv3 us devenv3-apps CreateMissingTopics
+    - sleep 3s
+    - sudo kubectl config set-context --current --namespace=devenv3-apps
+    - sudo kubectl config current-context
+    - /usr/bin/bash apply-server-deployments.sh
+  needs:
+    - build-devenv3
+  environment:
+    name: devenv3
+    url: https://accounts-devenv3.salesmate.io
+  only:
+    - /^devenv3\/feature\-[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+    - /^Devenv3\/feature\-[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+  tags:
+    - salesmate-ci
+
+run_cockroachdb_migrations_devenv3:
+  stage: Run CockroachDB Migrations
+  script:
+    - echo "$GOOGLE_KEY_DEV" > dev_key.json
+    - sudo gcloud auth activate-service-account --project $DEV_PROJECT_ID --key-file=dev_key.json
+    - IMAGE_TAG=`echo $IMAGE_TAG | sed -e 's/\//-/g'`
+    - npm i lodash --cache .npm --prefer-offline
+    - npm i json-format --cache .npm --prefer-offline
+    - sudo gcloud container clusters get-credentials $DEV3_GKE_CLUSTER --region $GKE_REGION_DEV --project $DEV_PROJECT_ID
+    - node deploy/create-deployment-yml-files.js devenv3 us devenv3-apps RunCockroachDbMigrations
+    - sleep 3s
+    - sudo kubectl config set-context --current --namespace=devenv3-apps
+    - sudo kubectl config current-context
+    - /usr/bin/bash apply-server-deployments.sh
+  needs:
+    - create_missing_topics_devenv3
+  environment:
+    name: devenv3
+    url: https://accounts-devenv3.salesmate.io
+  only:
+    - /^devenv3\/feature\-[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+    - /^Devenv3\/feature\-[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+  tags:
+    - salesmate-ci
+
+deploy_server_on_devenv3:
+  stage: Deploy YAMLs
+  script:
+    - echo "$GOOGLE_KEY_DEV" > dev_key.json
+    - sudo gcloud auth activate-service-account --project $DEV_PROJECT_ID --key-file=dev_key.json
+    - IMAGE_TAG=`echo $IMAGE_TAG | sed -e 's/\//-/g'`
+    - npm i lodash --cache .npm --prefer-offline
+    - npm i json-format --cache .npm --prefer-offline
+    - node deploy/create-deployment-yml-files.js devenv3 us devenv3-apps
+    - sudo gcloud container clusters get-credentials $DEV3_GKE_CLUSTER --region $GKE_REGION_DEV --project $DEV_PROJECT_ID
+    - sleep 3s
+    - sudo kubectl config set-context --current --namespace=devenv3-apps
+    - sudo kubectl config current-context
+    - /usr/bin/bash apply-server-deployments.sh
+    #- sudo kubectl apply -f deploy/ymls/deployments -R
+    #- sudo kubectl apply -f deploy/ymls/crons -R
+    #- sudo kubectl apply -f deploy/ymls/networking -R
+  needs:
+    - run_cockroachdb_migrations_devenv3
+  environment:
+    name: devenv3
+    url: https://accounts-devenv3.salesmate.io
+  only:
+    - /^devenv3\/feature\-[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+    - /^Devenv3\/feature\-[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+  tags:
+    - salesmate-ci
+
+deploy_jobs_on_devenv3:
+  stage: Deploy YAMLs
+  script:
+    - echo "$GOOGLE_KEY_DEV" > dev_key.json
+    - sudo gcloud auth activate-service-account --project $DEV_PROJECT_ID --key-file=dev_key.json
+    - IMAGE_TAG=`echo $IMAGE_TAG | sed -e 's/\//-/g'`
+    - npm i lodash --cache .npm --prefer-offline
+    - npm i json-format --cache .npm --prefer-offline
+    - node deploy/create-deployment-yml-files.js devenv3 us devenv3-apps
+    - sudo gcloud container clusters get-credentials $DEV3_GKE_CLUSTER --region $GKE_REGION_DEV --project $DEV_PROJECT_ID
+    - sleep 3s
+    - sudo kubectl config set-context --current --namespace=devenv3-apps
+    - sudo kubectl config current-context
+    - /usr/bin/bash apply-job-deployments.sh
+    #- sudo kubectl apply -f deploy/ymls/deployments -R
+    #- sudo kubectl apply -f deploy/ymls/crons -R
+    #- sudo kubectl apply -f deploy/ymls/networking -R
+  needs:
+    - run_cockroachdb_migrations_devenv3
+  environment:
+    name: devenv3
+    url: https://accounts-devenv3.salesmate.io
+  only:
+    - /^devenv3\/feature\-[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+    - /^Devenv3\/feature\-[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+  tags:
+    - salesmate-ci
+
+deploy_crons_on_devenv3:
+  stage: Deploy YAMLs
+  script:
+    - echo "$GOOGLE_KEY_DEV" > dev_key.json
+    - sudo gcloud auth activate-service-account --project $DEV_PROJECT_ID --key-file=dev_key.json
+    - IMAGE_TAG=`echo $IMAGE_TAG | sed -e 's/\//-/g'`
+    - npm i lodash --cache .npm --prefer-offline
+    - npm i json-format --cache .npm --prefer-offline
+    - node deploy/create-deployment-yml-files.js devenv3 us dev-apps
+    - sudo gcloud container clusters get-credentials $DEV3_GKE_CLUSTER --region $GKE_REGION_DEV --project $DEV_PROJECT_ID
+    - sleep 3s
+    - sudo kubectl config set-context --current --namespace=devenv3-apps
+    - sudo kubectl config current-context
+    - /usr/bin/bash apply-cron-deployments.sh
+    #- sudo kubectl apply -f deploy/ymls/deployments -R
+    #- sudo kubectl apply -f deploy/ymls/crons -R
+    #- sudo kubectl apply -f deploy/ymls/networking -R
+  needs:
+    - run_cockroachdb_migrations_devenv3
+  environment:
+    name: devenv3
+    url: https://accounts-devenv3.salesmate.io
+  only:
+    - /^devenv3\/feature\-[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+    - /^Devenv3\/feature\-[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+  tags:
+    - salesmate-ci
+
+deploy_services_on_devenv3:
+  stage: Deploy YAMLs
+  script:
+    - echo "$GOOGLE_KEY_DEV" > dev_key.json
+    - sudo gcloud auth activate-service-account --project $DEV_PROJECT_ID --key-file=dev_key.json
+    - IMAGE_TAG=`echo $IMAGE_TAG | sed -e 's/\//-/g'`
+    - npm i lodash --cache .npm --prefer-offline
+    - npm i json-format --cache .npm --prefer-offline
+    - node deploy/create-deployment-yml-files.js devenv3 us devenv3-apps
+    - sudo gcloud container clusters get-credentials $DEV3_GKE_CLUSTER --region $GKE_REGION_DEV --project $DEV_PROJECT_ID
+    - sleep 3s
+    - sudo kubectl config set-context --current --namespace=devenv3-apps
+    - sudo kubectl config current-context
+    - /usr/bin/bash apply-service-deployments.sh
+    #- sudo kubectl apply -f deploy/ymls/deployments -R
+    #- sudo kubectl apply -f deploy/ymls/crons -R
+    #- sudo kubectl apply -f deploy/ymls/networking -R
+  needs:
+    - run_cockroachdb_migrations_devenv3
+  environment:
+    name: devenv3
+    url: https://accounts-devenv3.salesmate.io
+  only:
+    - /^devenv3\/feature\-[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+    - /^Devenv3\/feature\-[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+  tags:
+    - salesmate-ci
+
+deploy_virtual_services_on_devenv3:
+  stage: Deploy YAMLs
+  script:
+    - echo "$GOOGLE_KEY_DEV" > dev_key.json
+    - sudo gcloud auth activate-service-account --project $DEV_PROJECT_ID --key-file=dev_key.json
+    - IMAGE_TAG=`echo $IMAGE_TAG | sed -e 's/\//-/g'`
+    - npm i lodash --cache .npm --prefer-offline
+    - npm i json-format --cache .npm --prefer-offline
+    - node deploy/create-deployment-yml-files.js devenv3 us dev-apps
+    - sudo gcloud container clusters get-credentials $DEV3_GKE_CLUSTER --region $GKE_REGION_DEV --project $DEV_PROJECT_ID
+    - sleep 3s
+    - sudo kubectl config set-context --current --namespace=devenv3-apps
+    - sudo kubectl config current-context
+    - /usr/bin/bash apply-virtual-service-deployments.sh
+    #- sudo kubectl apply -f deploy/ymls/deployments -R
+    #- sudo kubectl apply -f deploy/ymls/crons -R
+    #- sudo kubectl apply -f deploy/ymls/networking -R
+  needs:
+    - run_cockroachdb_migrations_devenv3
+  environment:
+    name: devenv3
+    url: https://accounts-dev.salesmate.io
+  only:
+    - /^devenv3\/feature\-[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+    - /^Devenv3\/feature\-[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+  tags:
+    - salesmate-ci
+
+
+########################################### devenv4 deployment ###################################
+########################################################################################
+
+create_missing_topics_devenv4:
+  stage: Create missing topics
+  script:
+    - echo "$GOOGLE_KEY_DEV" > dev_key.json
+    - sudo gcloud auth activate-service-account --project $DEV_PROJECT_ID --key-file=dev_key.json
+    - IMAGE_TAG=`echo $IMAGE_TAG | sed -e 's/\//-/g'`
+    - npm i lodash --cache .npm --prefer-offline
+    - npm i json-format --cache .npm --prefer-offline
+    - sudo gcloud container clusters get-credentials $DEV4_GKE_CLUSTER --region $GKE_REGION_DEV --project $DEV_PROJECT_ID
+    - node deploy/create-deployment-yml-files.js devenv4 us devenv4-apps CreateMissingTopics
+    - sleep 3s
+    - sudo kubectl config set-context --current --namespace=devenv4-apps
+    - sudo kubectl config current-context
+    - /usr/bin/bash apply-server-deployments.sh
+  needs:
+    - build-devenv4
+  environment:
+    name: devenv4
+    url: https://accounts-devenv4.salesmate.io
+  only:
+    - /^devenv4\/feature\-[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+    - /^Devenv4\/feature\-[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+  tags:
+    - salesmate-ci
+
+run_cockroachdb_migrations_devenv4:
+  stage: Run CockroachDB Migrations
+  script:
+    - echo "$GOOGLE_KEY_DEV" > dev_key.json
+    - sudo gcloud auth activate-service-account --project $DEV_PROJECT_ID --key-file=dev_key.json
+    - IMAGE_TAG=`echo $IMAGE_TAG | sed -e 's/\//-/g'`
+    - npm i lodash --cache .npm --prefer-offline
+    - npm i json-format --cache .npm --prefer-offline
+    - sudo gcloud container clusters get-credentials $DEV4_GKE_CLUSTER --region $GKE_REGION_DEV --project $DEV_PROJECT_ID
+    - node deploy/create-deployment-yml-files.js devenv4 us devenv4-apps RunCockroachDbMigrations
+    - sleep 3s
+    - sudo kubectl config set-context --current --namespace=devenv4-apps
+    - sudo kubectl config current-context
+    - /usr/bin/bash apply-server-deployments.sh
+  needs:
+    - create_missing_topics_devenv4
+  environment:
+    name: devenv4
+    url: https://accounts-devenv4.salesmate.io
+  only:
+    - /^devenv4\/feature\-[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+    - /^Devenv4\/feature\-[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+  tags:
+    - salesmate-ci
+
+deploy_server_on_devenv4:
+  stage: Deploy YAMLs
+  script:
+    - echo "$GOOGLE_KEY_DEV" > dev_key.json
+    - sudo gcloud auth activate-service-account --project $DEV_PROJECT_ID --key-file=dev_key.json
+    - IMAGE_TAG=`echo $IMAGE_TAG | sed -e 's/\//-/g'`
+    - npm i lodash --cache .npm --prefer-offline
+    - npm i json-format --cache .npm --prefer-offline
+    - node deploy/create-deployment-yml-files.js devenv4 us devenv4-apps
+    - sudo gcloud container clusters get-credentials $DEV4_GKE_CLUSTER --region $GKE_REGION_DEV --project $DEV_PROJECT_ID
+    - sleep 3s
+    - sudo kubectl config set-context --current --namespace=devenv4-apps
+    - sudo kubectl config current-context
+    - /usr/bin/bash apply-server-deployments.sh
+    #- sudo kubectl apply -f deploy/ymls/deployments -R
+    #- sudo kubectl apply -f deploy/ymls/crons -R
+    #- sudo kubectl apply -f deploy/ymls/networking -R
+  needs:
+    - run_cockroachdb_migrations_devenv4
+  environment:
+    name: devenv4
+    url: https://accounts-devenv4.salesmate.io
+  only:
+    - /^devenv4\/feature\-[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+    - /^Devenv4\/feature\-[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+  tags:
+    - salesmate-ci
+
+deploy_jobs_on_devenv4:
+  stage: Deploy YAMLs
+  script:
+    - echo "$GOOGLE_KEY_DEV" > dev_key.json
+    - sudo gcloud auth activate-service-account --project $DEV_PROJECT_ID --key-file=dev_key.json
+    - IMAGE_TAG=`echo $IMAGE_TAG | sed -e 's/\//-/g'`
+    - npm i lodash --cache .npm --prefer-offline
+    - npm i json-format --cache .npm --prefer-offline
+    - node deploy/create-deployment-yml-files.js devenv4 us devenv4-apps
+    - sudo gcloud container clusters get-credentials $DEV4_GKE_CLUSTER --region $GKE_REGION_DEV --project $DEV_PROJECT_ID
+    - sleep 3s
+    - sudo kubectl config set-context --current --namespace=devenv4-apps
+    - sudo kubectl config current-context
+    - /usr/bin/bash apply-job-deployments.sh
+    #- sudo kubectl apply -f deploy/ymls/deployments -R
+    #- sudo kubectl apply -f deploy/ymls/crons -R
+    #- sudo kubectl apply -f deploy/ymls/networking -R
+  needs:
+    - run_cockroachdb_migrations_devenv4
+  environment:
+    name: devenv4
+    url: https://accounts-devenv4.salesmate.io
+  only:
+    - /^devenv4\/feature\-[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+    - /^Devenv4\/feature\-[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+  tags:
+    - salesmate-ci
+
+deploy_crons_on_devenv4:
+  stage: Deploy YAMLs
+  script:
+    - echo "$GOOGLE_KEY_DEV" > dev_key.json
+    - sudo gcloud auth activate-service-account --project $DEV_PROJECT_ID --key-file=dev_key.json
+    - IMAGE_TAG=`echo $IMAGE_TAG | sed -e 's/\//-/g'`
+    - npm i lodash --cache .npm --prefer-offline
+    - npm i json-format --cache .npm --prefer-offline
+    - node deploy/create-deployment-yml-files.js devenv4 us dev-apps
+    - sudo gcloud container clusters get-credentials $DEV4_GKE_CLUSTER --region $GKE_REGION_DEV --project $DEV_PROJECT_ID
+    - sleep 3s
+    - sudo kubectl config set-context --current --namespace=devenv4-apps
+    - sudo kubectl config current-context
+    - /usr/bin/bash apply-cron-deployments.sh
+    #- sudo kubectl apply -f deploy/ymls/deployments -R
+    #- sudo kubectl apply -f deploy/ymls/crons -R
+    #- sudo kubectl apply -f deploy/ymls/networking -R
+  needs:
+    - run_cockroachdb_migrations_devenv4
+  environment:
+    name: devenv4
+    url: https://accounts-devenv4.salesmate.io
+  only:
+    - /^devenv4\/feature\-[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+    - /^Devenv4\/feature\-[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+  tags:
+    - salesmate-ci
+
+deploy_services_on_devenv4:
+  stage: Deploy YAMLs
+  script:
+    - echo "$GOOGLE_KEY_DEV" > dev_key.json
+    - sudo gcloud auth activate-service-account --project $DEV_PROJECT_ID --key-file=dev_key.json
+    - IMAGE_TAG=`echo $IMAGE_TAG | sed -e 's/\//-/g'`
+    - npm i lodash --cache .npm --prefer-offline
+    - npm i json-format --cache .npm --prefer-offline
+    - node deploy/create-deployment-yml-files.js devenv4 us devenv4-apps
+    - sudo gcloud container clusters get-credentials $DEV4_GKE_CLUSTER --region $GKE_REGION_DEV --project $DEV_PROJECT_ID
+    - sleep 3s
+    - sudo kubectl config set-context --current --namespace=devenv4-apps
+    - sudo kubectl config current-context
+    - /usr/bin/bash apply-service-deployments.sh
+    #- sudo kubectl apply -f deploy/ymls/deployments -R
+    #- sudo kubectl apply -f deploy/ymls/crons -R
+    #- sudo kubectl apply -f deploy/ymls/networking -R
+  needs:
+    - run_cockroachdb_migrations_devenv4
+  environment:
+    name: devenv4
+    url: https://accounts-devenv4.salesmate.io
+  only:
+    - /^devenv4\/feature\-[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+    - /^Devenv4\/feature\-[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+  tags:
+    - salesmate-ci
+
+deploy_virtual_services_on_devenv4:
+  stage: Deploy YAMLs
+  script:
+    - echo "$GOOGLE_KEY_DEV" > dev_key.json
+    - sudo gcloud auth activate-service-account --project $DEV_PROJECT_ID --key-file=dev_key.json
+    - IMAGE_TAG=`echo $IMAGE_TAG | sed -e 's/\//-/g'`
+    - npm i lodash --cache .npm --prefer-offline
+    - npm i json-format --cache .npm --prefer-offline
+    - node deploy/create-deployment-yml-files.js devenv4 us dev-apps
+    - sudo gcloud container clusters get-credentials $DEV4_GKE_CLUSTER --region $GKE_REGION_DEV --project $DEV_PROJECT_ID
+    - sleep 3s
+    - sudo kubectl config set-context --current --namespace=devenv4-apps
+    - sudo kubectl config current-context
+    - /usr/bin/bash apply-virtual-service-deployments.sh
+    #- sudo kubectl apply -f deploy/ymls/deployments -R
+    #- sudo kubectl apply -f deploy/ymls/crons -R
+    #- sudo kubectl apply -f deploy/ymls/networking -R
+  needs:
+    - run_cockroachdb_migrations_devenv4
+  environment:
+    name: devenv4
+    url: https://accounts-dev.salesmate.io
+  only:
+    - /^devenv4\/feature\-[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+    - /^Devenv4\/feature\-[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+  tags:
+    - salesmate-ci
+
+########################################### devenv5 deployment ###################################
+########################################################################################
+
+create_missing_topics_devenv5:
+  stage: Create missing topics
+  script:
+    - echo "$GOOGLE_KEY_DEV" > dev_key.json
+    - sudo gcloud auth activate-service-account --project $DEV_PROJECT_ID --key-file=dev_key.json
+    - IMAGE_TAG=`echo $IMAGE_TAG | sed -e 's/\//-/g'`
+    - npm i lodash --cache .npm --prefer-offline
+    - npm i json-format --cache .npm --prefer-offline
+    - sudo gcloud container clusters get-credentials $DEV5_GKE_CLUSTER --region $GKE_REGION_DEV --project $DEV_PROJECT_ID
+    - node deploy/create-deployment-yml-files.js devenv5 us devenv5-apps CreateMissingTopics
+    - sleep 3s
+    - sudo kubectl config set-context --current --namespace=devenv5-apps
+    - sudo kubectl config current-context
+    - /usr/bin/bash apply-server-deployments.sh
+  needs:
+    - build-devenv5
+  environment:
+    name: devenv5
+    url: https://accounts-devenv5.salesmate.io
+  only:
+    - /^devenv5\/feature\-[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+    - /^Devenv5\/feature\-[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+  tags:
+    - salesmate-ci
+
+run_cockroachdb_migrations_devenv5:
+  stage: Run CockroachDB Migrations
+  script:
+    - echo "$GOOGLE_KEY_DEV" > dev_key.json
+    - sudo gcloud auth activate-service-account --project $DEV_PROJECT_ID --key-file=dev_key.json
+    - IMAGE_TAG=`echo $IMAGE_TAG | sed -e 's/\//-/g'`
+    - npm i lodash --cache .npm --prefer-offline
+    - npm i json-format --cache .npm --prefer-offline
+    - sudo gcloud container clusters get-credentials $DEV5_GKE_CLUSTER --region $GKE_REGION_DEV --project $DEV_PROJECT_ID
+    - node deploy/create-deployment-yml-files.js devenv5 us devenv5-apps RunCockroachDbMigrations
+    - sleep 3s
+    - sudo kubectl config set-context --current --namespace=devenv5-apps
+    - sudo kubectl config current-context
+    - /usr/bin/bash apply-server-deployments.sh
+  needs:
+    - create_missing_topics_devenv5
+  environment:
+    name: devenv5
+    url: https://accounts-devenv5.salesmate.io
+  only:
+    - /^devenv5\/feature\-[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+    - /^Devenv5\/feature\-[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+  tags:
+    - salesmate-ci
+
+deploy_server_on_devenv5:
+  stage: Deploy YAMLs
+  script:
+    - echo "$GOOGLE_KEY_DEV" > dev_key.json
+    - sudo gcloud auth activate-service-account --project $DEV_PROJECT_ID --key-file=dev_key.json
+    - IMAGE_TAG=`echo $IMAGE_TAG | sed -e 's/\//-/g'`
+    - npm i lodash --cache .npm --prefer-offline
+    - npm i json-format --cache .npm --prefer-offline
+    - node deploy/create-deployment-yml-files.js devenv5 us devenv5-apps
+    - sudo gcloud container clusters get-credentials $DEV5_GKE_CLUSTER --region $GKE_REGION_DEV --project $DEV_PROJECT_ID
+    - sleep 3s
+    - sudo kubectl config set-context --current --namespace=devenv5-apps
+    - sudo kubectl config current-context
+    - /usr/bin/bash apply-server-deployments.sh
+    #- sudo kubectl apply -f deploy/ymls/deployments -R
+    #- sudo kubectl apply -f deploy/ymls/crons -R
+    #- sudo kubectl apply -f deploy/ymls/networking -R
+  needs:
+    - run_cockroachdb_migrations_devenv5
+  environment:
+    name: devenv5
+    url: https://accounts-devenv5.salesmate.io
+  only:
+    - /^devenv5\/feature\-[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+    - /^Devenv5\/feature\-[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+  tags:
+    - salesmate-ci
+
+deploy_jobs_on_devenv5:
+  stage: Deploy YAMLs
+  script:
+    - echo "$GOOGLE_KEY_DEV" > dev_key.json
+    - sudo gcloud auth activate-service-account --project $DEV_PROJECT_ID --key-file=dev_key.json
+    - IMAGE_TAG=`echo $IMAGE_TAG | sed -e 's/\//-/g'`
+    - npm i lodash --cache .npm --prefer-offline
+    - npm i json-format --cache .npm --prefer-offline
+    - node deploy/create-deployment-yml-files.js devenv5 us devenv5-apps
+    - sudo gcloud container clusters get-credentials $DEV5_GKE_CLUSTER --region $GKE_REGION_DEV --project $DEV_PROJECT_ID
+    - sleep 3s
+    - sudo kubectl config set-context --current --namespace=devenv5-apps
+    - sudo kubectl config current-context
+    - /usr/bin/bash apply-job-deployments.sh
+    #- sudo kubectl apply -f deploy/ymls/deployments -R
+    #- sudo kubectl apply -f deploy/ymls/crons -R
+    #- sudo kubectl apply -f deploy/ymls/networking -R
+  needs:
+    - run_cockroachdb_migrations_devenv5
+  environment:
+    name: devenv5
+    url: https://accounts-devenv5.salesmate.io
+  only:
+    - /^devenv5\/feature\-[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+    - /^Devenv5\/feature\-[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+  tags:
+    - salesmate-ci
+
+deploy_crons_on_devenv5:
+  stage: Deploy YAMLs
+  script:
+    - echo "$GOOGLE_KEY_DEV" > dev_key.json
+    - sudo gcloud auth activate-service-account --project $DEV_PROJECT_ID --key-file=dev_key.json
+    - IMAGE_TAG=`echo $IMAGE_TAG | sed -e 's/\//-/g'`
+    - npm i lodash --cache .npm --prefer-offline
+    - npm i json-format --cache .npm --prefer-offline
+    - node deploy/create-deployment-yml-files.js devenv5 us dev-apps
+    - sudo gcloud container clusters get-credentials $DEV5_GKE_CLUSTER --region $GKE_REGION_DEV --project $DEV_PROJECT_ID
+    - sleep 3s
+    - sudo kubectl config set-context --current --namespace=devenv5-apps
+    - sudo kubectl config current-context
+    - /usr/bin/bash apply-cron-deployments.sh
+    #- sudo kubectl apply -f deploy/ymls/deployments -R
+    #- sudo kubectl apply -f deploy/ymls/crons -R
+    #- sudo kubectl apply -f deploy/ymls/networking -R
+  needs:
+    - run_cockroachdb_migrations_devenv5
+  environment:
+    name: devenv5
+    url: https://accounts-devenv5.salesmate.io
+  only:
+    - /^devenv5\/feature\-[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+    - /^Devenv5\/feature\-[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+  tags:
+    - salesmate-ci
+
+deploy_services_on_devenv5:
+  stage: Deploy YAMLs
+  script:
+    - echo "$GOOGLE_KEY_DEV" > dev_key.json
+    - sudo gcloud auth activate-service-account --project $DEV_PROJECT_ID --key-file=dev_key.json
+    - IMAGE_TAG=`echo $IMAGE_TAG | sed -e 's/\//-/g'`
+    - npm i lodash --cache .npm --prefer-offline
+    - npm i json-format --cache .npm --prefer-offline
+    - node deploy/create-deployment-yml-files.js devenv5 us devenv5-apps
+    - sudo gcloud container clusters get-credentials $DEV5_GKE_CLUSTER --region $GKE_REGION_DEV --project $DEV_PROJECT_ID
+    - sleep 3s
+    - sudo kubectl config set-context --current --namespace=devenv5-apps
+    - sudo kubectl config current-context
+    - /usr/bin/bash apply-service-deployments.sh
+    #- sudo kubectl apply -f deploy/ymls/deployments -R
+    #- sudo kubectl apply -f deploy/ymls/crons -R
+    #- sudo kubectl apply -f deploy/ymls/networking -R
+  needs:
+    - run_cockroachdb_migrations_devenv5
+  environment:
+    name: devenv5
+    url: https://accounts-devenv5.salesmate.io
+  only:
+    - /^devenv5\/feature\-[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+    - /^Devenv5\/feature\-[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+  tags:
+    - salesmate-ci
+
+deploy_virtual_services_on_devenv5:
+  stage: Deploy YAMLs
+  script:
+    - echo "$GOOGLE_KEY_DEV" > dev_key.json
+    - sudo gcloud auth activate-service-account --project $DEV_PROJECT_ID --key-file=dev_key.json
+    - IMAGE_TAG=`echo $IMAGE_TAG | sed -e 's/\//-/g'`
+    - npm i lodash --cache .npm --prefer-offline
+    - npm i json-format --cache .npm --prefer-offline
+    - node deploy/create-deployment-yml-files.js devenv5 us dev-apps
+    - sudo gcloud container clusters get-credentials $DEV5_GKE_CLUSTER --region $GKE_REGION_DEV --project $DEV_PROJECT_ID
+    - sleep 3s
+    - sudo kubectl config set-context --current --namespace=devenv5-apps
+    - sudo kubectl config current-context
+    - /usr/bin/bash apply-virtual-service-deployments.sh
+    #- sudo kubectl apply -f deploy/ymls/deployments -R
+    #- sudo kubectl apply -f deploy/ymls/crons -R
+    #- sudo kubectl apply -f deploy/ymls/networking -R
+  needs:
+    - run_cockroachdb_migrations_devenv5
+  environment:
+    name: devenv5
+    url: https://accounts-dev.salesmate.io
+  only:
+    - /^devenv5\/feature\-[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+    - /^Devenv5\/feature\-[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+  tags:
+    - salesmate-ci
+
+    ########################################### Staging Deployment ###################################
+    ########################################################################################
+
+create_missing_topics_staging:
+  stage: Create missing topics
+  script:
+    - echo "$GOOGLE_KEY_STAGING" > staging_key.json
+    - sudo gcloud auth activate-service-account --project $STAGING_PROJECT_ID --key-file=staging_key.json
+    - IMAGE_TAG=`echo $IMAGE_TAG | sed -e 's/\//-/g'`
+    - npm i lodash --cache .npm --prefer-offline
+    - npm i json-format --cache .npm --prefer-offline
+    - sudo gcloud container clusters get-credentials $GKE_CLUSTER_STAGING --region $GKE_REGION_STAGING --project $STAGING_PROJECT_ID
+    - sudo kubectl config set-context --current --namespace=staging-apps
+    - sudo kubectl config current-context
+    - node deploy/create-deployment-yml-files.js staging us staging-apps CreateMissingTopics
+    - sleep 3s
+    - /usr/bin/bash apply-server-deployments.sh
+  needs:
+    - build-staging
+  environment:
+    name: staging
+    url: https://accounts-staging.salesmate.io
+  only:
+    - staging
+    - /^staging-[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/\
+    - master
+    - /^master-us-[0-9]+(?:.[0-9]+)+$/
+  tags:
+    - salesmate-ci
+
+create_missing_topics_staging_hotfix:
+  stage: Create missing topics
+  script:
+    - echo "$GOOGLE_KEY_STAGING" > staging_key.json
+    - sudo gcloud auth activate-service-account --project $STAGING_PROJECT_ID --key-file=staging_key.json
+    - IMAGE_TAG=`echo $IMAGE_TAG | sed -e 's/\//-/g'`
+    - npm i lodash --cache .npm --prefer-offline
+    - npm i json-format --cache .npm --prefer-offline
+    - sudo gcloud container clusters get-credentials $GKE_CLUSTER_STAGING --region $GKE_REGION_STAGING --project $STAGING_PROJECT_ID
+    - sudo kubectl config set-context --current --namespace=staging-apps
+    - sudo kubectl config current-context
+    - node deploy/create-deployment-yml-files.js staging us staging-apps CreateMissingTopics
+    - sleep 3s
+    - /usr/bin/bash apply-server-deployments.sh
+  needs:
+    - build-staging-hotfix
+  environment:
+    name: staging
+    url: https://accounts-staging.salesmate.io
+  only:
+    - /^hotfix\/[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+  tags:
+    - salesmate-ci
+
+run_cockroachdb_migrations_staging:
+  stage: Run CockroachDB Migrations
+  script:
+    - echo "$GOOGLE_KEY_STAGING" > staging_key.json
+    - sudo gcloud auth activate-service-account --project $STAGING_PROJECT_ID --key-file=staging_key.json
+    - IMAGE_TAG=`echo $IMAGE_TAG | sed -e 's/\//-/g'`
+    - npm i lodash --cache .npm --prefer-offline
+    - npm i json-format --cache .npm --prefer-offline
+    - sudo gcloud container clusters get-credentials $GKE_CLUSTER_STAGING --region $GKE_REGION_STAGING --project $STAGING_PROJECT_ID
+    - sudo kubectl config set-context --current --namespace=staging-apps
+    - sudo kubectl config current-context
+    - node deploy/create-deployment-yml-files.js staging us staging-apps RunCockroachDbMigrations
+    - sleep 3s
+    - /usr/bin/bash apply-server-deployments.sh
+  needs:
+    - create_missing_topics_staging
+  environment:
+    name: staging
+    url: https://accounts-staging.salesmate.io
+  only:
+    - staging
+    - /^staging-[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+    - master
+    - /^master-us-[0-9]+(?:.[0-9]+)+$/
+  tags:
+    - salesmate-ci
+
+run_cockroachdb_migrations_staging_hotfix:
+  stage: Run CockroachDB Migrations
+  script:
+    - echo "$GOOGLE_KEY_STAGING" > staging_key.json
+    - sudo gcloud auth activate-service-account --project $STAGING_PROJECT_ID --key-file=staging_key.json
+    - IMAGE_TAG=`echo $IMAGE_TAG | sed -e 's/\//-/g'`
+    - npm i lodash --cache .npm --prefer-offline
+    - npm i json-format --cache .npm --prefer-offline
+    - sudo gcloud container clusters get-credentials $GKE_CLUSTER_STAGING --region $GKE_REGION_STAGING --project $STAGING_PROJECT_ID
+    - sudo kubectl config set-context --current --namespace=staging-apps
+    - sudo kubectl config current-context
+    - node deploy/create-deployment-yml-files.js staging us staging-apps RunCockroachDbMigrations
+    - sleep 3s
+    - /usr/bin/bash apply-server-deployments.sh
+  needs:
+    - create_missing_topics_staging_hotfix
+  environment:
+    name: staging
+    url: https://accounts-staging.salesmate.io
+  only:
+    - /^hotfix\/[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+  tags:
+    - salesmate-ci
+  when: manual
+
+deploy_server_on_staging:
+  stage: Deploy YAMLs
+  script:
+    - echo "$GOOGLE_KEY_STAGING" > staging_key.json
+    - sudo gcloud auth activate-service-account --project $STAGING_PROJECT_ID --key-file=staging_key.json
+    - IMAGE_TAG=`echo $IMAGE_TAG | sed -e 's/\//-/g'`
+    - npm i lodash --cache .npm --prefer-offline
+    - npm i json-format --cache .npm --prefer-offline
+    - node deploy/create-deployment-yml-files.js staging us staging-apps
+    - sudo gcloud container clusters get-credentials $GKE_CLUSTER_STAGING --region $GKE_REGION_STAGING --project $STAGING_PROJECT_ID
+    - sleep 3s
+    - sudo kubectl config set-context --current --namespace=staging-apps
+    - sudo kubectl config current-context
+    - /usr/bin/bash apply-server-deployments.sh
+    #- sudo kubectl apply -f deploy/ymls/deployments -R
+    #- sudo kubectl apply -f deploy/ymls/crons -R
+    #- sudo kubectl apply -f deploy/ymls/networking -R
+  needs:
+    - run_cockroachdb_migrations_staging
+  environment:
+    name: staging
+    url: https://accounts-staging.salesmate.io
+  only:
+    - staging
+    - /^staging-[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+    - master
+    - /^master-us-[0-9]+(?:.[0-9]+)+$/
+  tags:
+    - salesmate-ci
+
+deploy_jobs_on_staging:
+  stage: Deploy YAMLs
+  script:
+    - echo "$GOOGLE_KEY_STAGING" > staging_key.json
+    - sudo gcloud auth activate-service-account --project $STAGING_PROJECT_ID --key-file=staging_key.json
+    - IMAGE_TAG=`echo $IMAGE_TAG | sed -e 's/\//-/g'`
+    - npm i lodash --cache .npm --prefer-offline
+    - npm i json-format --cache .npm --prefer-offline
+    - node deploy/create-deployment-yml-files.js staging us staging-apps
+    - sudo gcloud container clusters get-credentials $GKE_CLUSTER_STAGING --region $GKE_REGION_STAGING --project $STAGING_PROJECT_ID
+    - sleep 3s
+    - sudo kubectl config set-context --current --namespace=staging-apps
+    - sudo kubectl config current-context
+    - /usr/bin/bash apply-job-deployments.sh
+    #- sudo kubectl apply -f deploy/ymls/deployments -R
+    #- sudo kubectl apply -f deploy/ymls/crons -R
+    #- sudo kubectl apply -f deploy/ymls/networking -R
+  needs:
+    - run_cockroachdb_migrations_staging
+  environment:
+    name: staging
+    url: https://accounts-staging.salesmate.io
+  only:
+    - staging
+    - /^staging-[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+    - master
+    - /^master-us-[0-9]+(?:.[0-9]+)+$/
+  tags:
+    - salesmate-ci
+
+deploy_crons_on_staging:
+  stage: Deploy YAMLs
+  script:
+    - echo "$GOOGLE_KEY_STAGING" > staging_key.json
+    - sudo gcloud auth activate-service-account --project $STAGING_PROJECT_ID --key-file=staging_key.json
+    - IMAGE_TAG=`echo $IMAGE_TAG | sed -e 's/\//-/g'`
+    - npm i lodash --cache .npm --prefer-offline
+    - npm i json-format --cache .npm --prefer-offline
+    - node deploy/create-deployment-yml-files.js staging us staging-apps
+    - sudo gcloud container clusters get-credentials $GKE_CLUSTER_STAGING --region $GKE_REGION_STAGING --project $STAGING_PROJECT_ID
+    - sleep 3s
+    - sudo kubectl config set-context --current --namespace=staging-apps
+    - sudo kubectl config current-context
+    - /usr/bin/bash apply-cron-deployments.sh
+    #- sudo kubectl apply -f deploy/ymls/deployments -R
+    #- sudo kubectl apply -f deploy/ymls/crons -R
+    #- sudo kubectl apply -f deploy/ymls/networking -R
+  needs:
+    - run_cockroachdb_migrations_staging
+  environment:
+    name: staging
+    url: https://accounts-staging.salesmate.io
+  only:
+    - staging
+    - /^staging-[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+    - master
+    - /^master-us-[0-9]+(?:.[0-9]+)+$/
+  tags:
+    - salesmate-ci
+
+deploy_service_on_staging:
+  stage: Deploy YAMLs
+  script:
+    - echo "$GOOGLE_KEY_STAGING" > staging_key.json
+    - sudo gcloud auth activate-service-account --project $STAGING_PROJECT_ID --key-file=staging_key.json
+    - IMAGE_TAG=`echo $IMAGE_TAG | sed -e 's/\//-/g'`
+    - npm i lodash --cache .npm --prefer-offline
+    - npm i json-format --cache .npm --prefer-offline
+    - node deploy/create-deployment-yml-files.js staging us staging-apps
+    - sudo gcloud container clusters get-credentials $GKE_CLUSTER_STAGING --region $GKE_REGION_STAGING --project $STAGING_PROJECT_ID
+    - sleep 3s
+    - sudo kubectl config set-context --current --namespace=staging-apps
+    - sudo kubectl config current-context
+    - /usr/bin/bash apply-service-deployments.sh
+    #- sudo kubectl apply -f deploy/ymls/deployments -R
+    #- sudo kubectl apply -f deploy/ymls/crons -R
+    #- sudo kubectl apply -f deploy/ymls/networking -R
+  needs:
+    - run_cockroachdb_migrations_staging
+  environment:
+    name: staging
+    url: https://accounts-staging.salesmate.io
+  only:
+    - staging
+    - /^staging-[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+    - master
+    - /^master-us-[0-9]+(?:.[0-9]+)+$/
+  tags:
+    - salesmate-ci
+
+deploy_virtual_services_on_staging:
+  stage: Deploy YAMLs
+  script:
+    - echo "$GOOGLE_KEY_STAGING" > staging_key.json
+    - sudo gcloud auth activate-service-account --project $STAGING_PROJECT_ID --key-file=staging_key.json
+    - IMAGE_TAG=`echo $IMAGE_TAG | sed -e 's/\//-/g'`
+    - npm i lodash --cache .npm --prefer-offline
+    - npm i json-format --cache .npm --prefer-offline
+    - node deploy/create-deployment-yml-files.js staging us staging-apps
+    - sudo gcloud container clusters get-credentials $GKE_CLUSTER_STAGING --region $GKE_REGION_STAGING --project $STAGING_PROJECT_ID
+    - sleep 3s
+    - sudo kubectl config set-context --current --namespace=staging-apps
+    - sudo kubectl config current-context
+    - /usr/bin/bash apply-virtual-service-deployments.sh
+    #- sudo kubectl apply -f deploy/ymls/deployments -R
+    #- sudo kubectl apply -f deploy/ymls/crons -R
+    #- sudo kubectl apply -f deploy/ymls/networking -R
+  needs:
+    - run_cockroachdb_migrations_staging
+  environment:
+    name: staging
+    url: https://accounts-staging.salesmate.io
+  only:
+    - staging
+    - /^staging-[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+    - master
+    - /^master-us-[0-9]+(?:.[0-9]+)+$/
+  tags:
+    - salesmate-ci
+
+deploy_server_on_staging_hotfix:
+  stage: Deploy YAMLs
+  script:
+    - echo "$GOOGLE_KEY_STAGING" > staging_key.json
+    - sudo gcloud auth activate-service-account --project $STAGING_PROJECT_ID --key-file=staging_key.json
+    - IMAGE_TAG=`echo $IMAGE_TAG | sed -e 's/\//-/g'`
+    - npm i lodash --cache .npm --prefer-offline
+    - npm i json-format --cache .npm --prefer-offline
+    - node deploy/create-deployment-yml-files.js staging us staging-apps
+    - sudo gcloud container clusters get-credentials $GKE_CLUSTER_STAGING --region $GKE_REGION_STAGING --project $STAGING_PROJECT_ID
+    - sleep 3s
+    - sudo kubectl config set-context --current --namespace=staging-apps
+    - sudo kubectl config current-context
+    - /usr/bin/bash apply-server-deployments.sh
+    #- sudo kubectl apply -f deploy/ymls/deployments -R
+    #- sudo kubectl apply -f deploy/ymls/crons -R
+    #- sudo kubectl apply -f deploy/ymls/networking -R
+  needs:
+    - run_cockroachdb_migrations_staging_hotfix
+  environment:
+    name: staging
+    url: https://accounts-staging.salesmate.io
+  only:
+    - /^hotfix\/[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+  tags:
+    - salesmate-ci
+
+deploy_jobs_on_staging_hotfix:
+  stage: Deploy YAMLs
+  script:
+    - echo "$GOOGLE_KEY_STAGING" > staging_key.json
+    - sudo gcloud auth activate-service-account --project $STAGING_PROJECT_ID --key-file=staging_key.json
+    - IMAGE_TAG=`echo $IMAGE_TAG | sed -e 's/\//-/g'`
+    - npm i lodash --cache .npm --prefer-offline
+    - npm i json-format --cache .npm --prefer-offline
+    - node deploy/create-deployment-yml-files.js staging us staging-apps
+    - sudo gcloud container clusters get-credentials $GKE_CLUSTER_STAGING --region $GKE_REGION_STAGING --project $STAGING_PROJECT_ID
+    - sleep 3s
+    - sudo kubectl config set-context --current --namespace=staging-apps
+    - sudo kubectl config current-context
+    - /usr/bin/bash apply-job-deployments.sh
+    #- sudo kubectl apply -f deploy/ymls/deployments -R
+    #- sudo kubectl apply -f deploy/ymls/crons -R
+    #- sudo kubectl apply -f deploy/ymls/networking -R
+  needs:
+    - run_cockroachdb_migrations_staging_hotfix
+  environment:
+    name: staging
+    url: https://accounts-staging.salesmate.io
+  only:
+    - /^hotfix\/[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+  tags:
+    - salesmate-ci
+
+deploy_crons_on_staging_hotfix:
+  stage: Deploy YAMLs
+  script:
+    - echo "$GOOGLE_KEY_STAGING" > staging_key.json
+    - sudo gcloud auth activate-service-account --project $STAGING_PROJECT_ID --key-file=staging_key.json
+    - IMAGE_TAG=`echo $IMAGE_TAG | sed -e 's/\//-/g'`
+    - npm i lodash --cache .npm --prefer-offline
+    - npm i json-format --cache .npm --prefer-offline
+    - node deploy/create-deployment-yml-files.js staging us staging-apps
+    - sudo gcloud container clusters get-credentials $GKE_CLUSTER_STAGING --region $GKE_REGION_STAGING --project $STAGING_PROJECT_ID
+    - sleep 3s
+    - sudo kubectl config set-context --current --namespace=staging-apps
+    - sudo kubectl config current-context
+    - /usr/bin/bash apply-cron-deployments.sh
+    #- sudo kubectl apply -f deploy/ymls/deployments -R
+    #- sudo kubectl apply -f deploy/ymls/crons -R
+    #- sudo kubectl apply -f deploy/ymls/networking -R
+  needs:
+    - run_cockroachdb_migrations_staging_hotfix
+  environment:
+    name: staging
+    url: https://accounts-staging.salesmate.io
+  only:
+    - /^hotfix\/[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+  tags:
+    - salesmate-ci
+
+deploy_service_on_staging_hotfix:
+  stage: Deploy YAMLs
+  script:
+    - echo "$GOOGLE_KEY_STAGING" > staging_key.json
+    - sudo gcloud auth activate-service-account --project $STAGING_PROJECT_ID --key-file=staging_key.json
+    - IMAGE_TAG=`echo $IMAGE_TAG | sed -e 's/\//-/g'`
+    - npm i lodash --cache .npm --prefer-offline
+    - npm i json-format --cache .npm --prefer-offline
+    - node deploy/create-deployment-yml-files.js staging us staging-apps
+    - sudo gcloud container clusters get-credentials $GKE_CLUSTER_STAGING --region $GKE_REGION_STAGING --project $STAGING_PROJECT_ID
+    - sleep 3s
+    - sudo kubectl config set-context --current --namespace=staging-apps
+    - sudo kubectl config current-context
+    - /usr/bin/bash apply-service-deployments.sh
+    #- sudo kubectl apply -f deploy/ymls/deployments -R
+    #- sudo kubectl apply -f deploy/ymls/crons -R
+    #- sudo kubectl apply -f deploy/ymls/networking -R
+  needs:
+    - run_cockroachdb_migrations_staging_hotfix
+  environment:
+    name: staging
+    url: https://accounts-staging.salesmate.io
+  only:
+    - /^hotfix\/[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+  tags:
+    - salesmate-ci
+
+deploy_virtual_services_on_staging_hotfix:
+  stage: Deploy YAMLs
+  script:
+    - echo "$GOOGLE_KEY_STAGING" > staging_key.json
+    - sudo gcloud auth activate-service-account --project $STAGING_PROJECT_ID --key-file=staging_key.json
+    - IMAGE_TAG=`echo $IMAGE_TAG | sed -e 's/\//-/g'`
+    - npm i lodash --cache .npm --prefer-offline
+    - npm i json-format --cache .npm --prefer-offline
+    - node deploy/create-deployment-yml-files.js staging us staging-apps
+    - sudo gcloud container clusters get-credentials $GKE_CLUSTER_STAGING --region $GKE_REGION_STAGING --project $STAGING_PROJECT_ID
+    - sleep 3s
+    - sudo kubectl config set-context --current --namespace=staging-apps
+    - sudo kubectl config current-context
+    - /usr/bin/bash apply-virtual-service-deployments.sh
+    #- sudo kubectl apply -f deploy/ymls/deployments -R
+    #- sudo kubectl apply -f deploy/ymls/crons -R
+    #- sudo kubectl apply -f deploy/ymls/networking -R
+  needs:
+    - run_cockroachdb_migrations_staging_hotfix
+  environment:
+    name: staging
+    url: https://accounts-staging.salesmate.io
+  only:
+    - /^hotfix\/[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+  tags:
+    - salesmate-ci
+######################################## PRODUCTION Deployment ##################################################
+##############################################################################################################
+
+create_missing_topics_production:
+  stage: Create missing topics
+  script:
+    - echo "$GOOGLE_KEY_PROD" > prod_key.json
+    - sudo gcloud auth activate-service-account --project $PROJECT_ID --key-file=prod_key.json
+    - IMAGE_TAG=`echo $IMAGE_TAG | sed -e 's/\//-/g'`
+    - npm i lodash --cache .npm --prefer-offline
+    - npm i json-format --cache .npm --prefer-offline
+    - sudo gcloud container clusters get-credentials $GKE_CLUSTER_PROD --region $GKE_REGION_PROD --project $PROJECT_ID
+    - sudo kubectl config set-context --current --namespace=prod-apps
+    - sudo kubectl config current-context
+    - node deploy/create-deployment-yml-files.js production us prod-apps CreateMissingTopics
+    - sleep 3s
+    - /usr/bin/bash apply-server-deployments.sh
+  needs:
+    - build-prod
+  environment:
+    name: production
+    url: https://accounts.salesmate.io
+  only:
+    - master
+    - /^master-us-[0-9]+(?:.[0-9]+)+$/
+    - /^hotfix\/[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+  tags:
+    - salesmate-ci
+
+run_cockroachdb_migrations_production:
+  stage: Run CockroachDB Migrations
+  script:
+    - echo "$GOOGLE_KEY_PROD" > prod_key.json
+    - sudo gcloud auth activate-service-account --project $PROJECT_ID --key-file=prod_key.json
+    - IMAGE_TAG=`echo $IMAGE_TAG | sed -e 's/\//-/g'`
+    - npm i lodash --cache .npm --prefer-offline
+    - npm i json-format --cache .npm --prefer-offline
+    - sudo gcloud container clusters get-credentials $GKE_CLUSTER_PROD --region $GKE_REGION_PROD --project $PROJECT_ID
+    - sudo kubectl config set-context --current --namespace=prod-apps
+    - sudo kubectl config current-context
+    - node deploy/create-deployment-yml-files.js production us prod-apps RunCockroachDbMigrations
+    - sleep 3s
+    - /usr/bin/bash apply-server-deployments.sh
+  needs:
+    - create_missing_topics_production
+  environment:
+    name: production
+    url: https://accounts.salesmate.io
+  only:
+    - master
+    - /^master-us-[0-9]+(?:.[0-9]+)+$/
+    - /^hotfix\/[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+  tags:
+    - salesmate-ci
+  when: manual
+
+deploy_server_on_production:
+  stage: Deploy YAMLs
+  script:
+    - echo "$GOOGLE_KEY_PROD" > prod_key.json
+    - sudo gcloud auth activate-service-account --project $PROJECT_ID --key-file=prod_key.json
+    - IMAGE_TAG=`echo $IMAGE_TAG | sed -e 's/\//-/g'`
+    - npm i lodash --cache .npm --prefer-offline
+    - npm i json-format --cache .npm --prefer-offline
+    - node deploy/create-deployment-yml-files.js production us prod-apps
+    - sudo gcloud container clusters get-credentials $GKE_CLUSTER_PROD --region $GKE_REGION_PROD --project $PROJECT_ID
+    - sleep 3s
+    - sudo kubectl config set-context --current --namespace=prod-apps
+    - sudo kubectl config current-context
+    - /usr/bin/bash apply-server-deployments.sh
+    #- sudo kubectl apply -f deploy/ymls/deployments -R
+    #- sudo kubectl apply -f deploy/ymls/crons -R
+    #- sudo kubectl apply -f deploy/ymls/networking -R
+  needs:
+    - run_cockroachdb_migrations_production
+  environment:
+    name: production
+    url: https://accounts.salesmate.io
+  only:
+    - master
+    - /^master-us-[0-9]+(?:.[0-9]+)+$/
+    - /^hotfix\/[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+  tags:
+    - salesmate-ci
+  when: manual
+
+deploy_jobs_on_production:
+  stage: Deploy YAMLs
+  script:
+    - echo "$GOOGLE_KEY_PROD" > prod_key.json
+    - sudo gcloud auth activate-service-account --project $PROJECT_ID --key-file=prod_key.json
+    - IMAGE_TAG=`echo $IMAGE_TAG | sed -e 's/\//-/g'`
+    - npm i lodash --cache .npm --prefer-offline
+    - npm i json-format --cache .npm --prefer-offline
+    - node deploy/create-deployment-yml-files.js production us prod-apps
+    - sudo gcloud container clusters get-credentials $GKE_CLUSTER_PROD --region $GKE_REGION_PROD --project $PROJECT_ID
+    - sleep 3s
+    - sudo kubectl config set-context --current --namespace=prod-apps
+    - sudo kubectl config current-context
+    - /usr/bin/bash apply-job-deployments.sh
+    #- sudo kubectl apply -f deploy/ymls/deployments -R
+    #- sudo kubectl apply -f deploy/ymls/crons -R
+    #- sudo kubectl apply -f deploy/ymls/networking -R
+  needs:
+    - run_cockroachdb_migrations_production
+  environment:
+    name: production
+    url: https://accounts.salesmate.io
+  only:
+    - master
+    - /^master-us-[0-9]+(?:.[0-9]+)+$/
+    - /^hotfix\/[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+  tags:
+    - salesmate-ci
+  when: manual
+
+deploy_crons_on_production:
+  stage: Deploy YAMLs
+  script:
+    - echo "$GOOGLE_KEY_PROD" > prod_key.json
+    - sudo gcloud auth activate-service-account --project $PROJECT_ID --key-file=prod_key.json
+    - IMAGE_TAG=`echo $IMAGE_TAG | sed -e 's/\//-/g'`
+    - npm i lodash --cache .npm --prefer-offline
+    - npm i json-format --cache .npm --prefer-offline
+    - node deploy/create-deployment-yml-files.js production us prod-apps
+    - sudo gcloud container clusters get-credentials $GKE_CLUSTER_PROD --region $GKE_REGION_PROD --project $PROJECT_ID
+    - sleep 3s
+    - sudo kubectl config set-context --current --namespace=prod-apps
+    - sudo kubectl config current-context
+    - /usr/bin/bash apply-cron-deployments.sh
+    #- sudo kubectl apply -f deploy/ymls/deployments -R
+    #- sudo kubectl apply -f deploy/ymls/crons -R
+    #- sudo kubectl apply -f deploy/ymls/networking -R
+  needs:
+    - run_cockroachdb_migrations_production
+  environment:
+    name: production
+    url: https://accounts.salesmate.io
+  only:
+    - master
+    - /^master-us-[0-9]+(?:.[0-9]+)+$/
+    - /^hotfix\/[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+  tags:
+    - salesmate-ci
+  when: manual
+
+deploy_services_on_production:
+  stage: Deploy YAMLs
+  script:
+    - echo "$GOOGLE_KEY_PROD" > prod_key.json
+    - sudo gcloud auth activate-service-account --project $PROJECT_ID --key-file=prod_key.json
+    - IMAGE_TAG=`echo $IMAGE_TAG | sed -e 's/\//-/g'`
+    - npm i lodash --cache .npm --prefer-offline
+    - npm i json-format --cache .npm --prefer-offline
+    - node deploy/create-deployment-yml-files.js production us prod-apps
+    - sudo gcloud container clusters get-credentials $GKE_CLUSTER_PROD --region $GKE_REGION_PROD --project $PROJECT_ID
+    - sleep 3s
+    - sudo kubectl config set-context --current --namespace=prod-apps
+    - sudo kubectl config current-context
+    - /usr/bin/bash apply-service-deployments.sh
+    #- sudo kubectl apply -f deploy/ymls/deployments -R
+    #- sudo kubectl apply -f deploy/ymls/crons -R
+    #- sudo kubectl apply -f deploy/ymls/networking -R
+  needs:
+    - run_cockroachdb_migrations_production
+  environment:
+    name: production
+    url: https://accounts.salesmate.io
+  only:
+    - master
+    - /^master-us-[0-9]+(?:.[0-9]+)+$/
+    - /^hotfix\/[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+  tags:
+    - salesmate-ci
+  when: manual
+
+deploy_virtual_services_on_production:
+  stage: Deploy YAMLs
+  script:
+    - echo "$GOOGLE_KEY_PROD" > prod_key.json
+    - sudo gcloud auth activate-service-account --project $PROJECT_ID --key-file=prod_key.json
+    - IMAGE_TAG=`echo $IMAGE_TAG | sed -e 's/\//-/g'`
+    - npm i lodash --cache .npm --prefer-offline
+    - npm i json-format --cache .npm --prefer-offline
+    - node deploy/create-deployment-yml-files.js production us prod-apps
+    - sudo gcloud container clusters get-credentials $GKE_CLUSTER_PROD --region $GKE_REGION_PROD --project $PROJECT_ID
+    - sleep 3s
+    - sudo kubectl config set-context --current --namespace=prod-apps
+    - sudo kubectl config current-context
+    - /usr/bin/bash apply-virtual-service-deployments.sh
+    #- sudo kubectl apply -f deploy/ymls/deployments -R
+    #- sudo kubectl apply -f deploy/ymls/crons -R
+    #- sudo kubectl apply -f deploy/ymls/networking -R
+  needs:
+    - run_cockroachdb_migrations_production
+  environment:
+    name: production
+    url: https://accounts.salesmate.io
+  only:
+    - master
+    - /^master-us-[0-9]+(?:.[0-9]+)+$/
+    - /^hotfix\/[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+  tags:
+    - salesmate-ci
+  when: manual
+
+############################################## EU Production Deployment ######################################
+###########################################################################################################
+
+create_missing_topics_eu_production:
+  stage: Create missing topics
+  script:
+    - echo "$GOOGLE_KEY_PROD" > prod_key.json
+    - sudo gcloud auth activate-service-account --project $PROJECT_ID --key-file=prod_key.json
+    - IMAGE_TAG=`echo $IMAGE_TAG | sed -e 's/\//-/g'`
+    - npm i lodash --cache .npm --prefer-offline
+    - npm i json-format --cache .npm --prefer-offline
+    - sudo gcloud container clusters get-credentials $GKE_CLUSTER_EU --region $GKE_REGION_PROD_EU --project $PROJECT_ID
+    - sudo kubectl config set-context --current --namespace=prod-apps
+    - sudo kubectl config current-context
+    - node deploy/create-deployment-yml-files.js production eu prod-apps CreateMissingTopics
+    - sleep 3s
+    - /usr/bin/bash apply-server-deployments.sh
+  needs:
+    - build-prod
+  environment:
+    name: eu-production
+    url: https://accounts.salesmate-eu.io
+  only:
+    - master
+    - /^master-eu-[0-9]+(?:.[0-9]+)+$/
+    - /^hotfix\/[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+  tags:
+    - salesmate-ci
+  when: manual
+
+run_cockroachdb_migrations_eu_production:
+  stage: Run CockroachDB Migrations
+  script:
+    - echo "$GOOGLE_KEY_PROD" > prod_key.json
+    - sudo gcloud auth activate-service-account --project $PROJECT_ID --key-file=prod_key.json
+    - IMAGE_TAG=`echo $IMAGE_TAG | sed -e 's/\//-/g'`
+    - npm i lodash --cache .npm --prefer-offline
+    - npm i json-format --cache .npm --prefer-offline
+    - sudo gcloud container clusters get-credentials $GKE_CLUSTER_EU --region $GKE_REGION_PROD_EU --project $PROJECT_ID
+    - sudo kubectl config set-context --current --namespace=prod-apps
+    - sudo kubectl config current-context
+    - node deploy/create-deployment-yml-files.js production eu prod-apps RunCockroachDbMigrations
+    - sleep 3s
+    - /usr/bin/bash apply-server-deployments.sh
+  needs:
+    - create_missing_topics_eu_production
+  environment:
+    name: eu-production
+    url: https://accounts.salesmate-eu.io
+  only:
+    - master
+    - /^master-eu-[0-9]+(?:.[0-9]+)+$/
+    - /^hotfix\/[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+  tags:
+    - salesmate-ci
+  when: manual
+
+deploy_apply_yml_files_eu_production:
+  stage: Deploy YAMLs
+  script:
+    - echo "$GOOGLE_KEY_PROD" > prod_key.json
+    - sudo gcloud auth activate-service-account --project $PROJECT_ID --key-file=prod_key.json
+    - IMAGE_TAG=`echo $IMAGE_TAG | sed -e 's/\//-/g'`
+    - npm i lodash --cache .npm --prefer-offline
+    - npm i json-format --cache .npm --prefer-offline
+    - node deploy/create-deployment-yml-files.js production eu prod-apps
+    - sudo gcloud container clusters get-credentials $GKE_CLUSTER_EU --region $GKE_REGION_PROD_EU --project $PROJECT_ID
+    - sleep 3s
+    - sudo kubectl config set-context --current --namespace=prod-apps
+    - sudo kubectl config current-context
+    - /usr/bin/bash apply-server-deployments.sh
+    #- sudo kubectl apply -f deploy/ymls/deployments -R
+    #- sudo kubectl apply -f deploy/ymls/crons -R
+    #- sudo kubectl apply -f deploy/ymls/networking -R
+  needs:
+    - run_cockroachdb_migrations_eu_production
+  environment:
+    name: eu-production
+    url: https://accounts.salesmate-eu.io
+  only:
+    - master
+    - /^master-eu-[0-9]+(?:.[0-9]+)+$/
+    - /^hotfix\/[a-zA-Z0-9]+(?:.[a-zA-Z0-9]+)+$/
+  tags:
+    - salesmate-ci
+  when: manual

@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+
+<body>
+    <script>
+        // function isIsogram(str) {
+        //     let charArr = str.toLowerCase().split("");
+
+        //     for (i = 0; i < charArr.length; i++) {
+        //         let splitArr = charArr.slice(i + 1);
+        //         if (splitArr.includes(charArr[i])) {
+        //             return false;
+        //         }
+        //     }
+        //     return true;
+        // }
+        // console.log(isIsogram("aba"));
+        function factors(num){
+            let arr = [];
+            for(let i=2;i<num/4;i++)
+                if(num%i==0)
+                    {arr.push(i);
+                        arr.push(num/i);
+                    }
+            return arr;
+        }
+        console.log(factors(24));
+    </script>
+</body>
+
+</html>

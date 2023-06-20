@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <script>
+        // JavaScript​ ​ function​ ​ to​ ​ get​ ​ time​ ​differences​ ​ in​ ​ years,​ ​ months,​ ​ weeks,​ ​ days,​ ​ hours and​ ​ minutes​ ​ between​ ​ two​ ​ dates.
+        function getDiff(n){
+        let year=0, month = 0, day = 0, m =q= n;
+        
+        if(n/365 != 0){
+            year  = Math.floor(n/365);
+            n= n - Math.floor(n/365)*365;
+        }
+        if(n/30!=0){
+            month = Math.floor(n/30);
+            n= n-Math.floor(n/30)*30;
+        }
+        if(m/7!=0){
+            week = Math.floor(m/7);
+            m = m -Math.floor(m/7)*7;
+        }
+        if(q!=0){
+            totalMonth = Math.floor(q/30);
+            q = q -Math.floor(q/30)*30
+        }
+        
+        alert(`${year} Years , ${month} Months and ${n} Days\n${week} Weeks and ${m}Days\n${totalMonth} Months and ${q} Days \n${Diff} Days\n${Diff*24} Hours\n${Diff*24*60} Minutes`)
+     }   
+     let date1 = new Date("07/01/2018");
+     let date2 = new Date("05/03/2020");
+     let Diff = date1.getTime()>date2.getTime()?(date1.getTime() - date2.getTime())/(1000*3600*24):(date2.getTime() - date1.getTime())/(1000*3600*24);
+    //  Output : 
+    // 1 years 10 months 2 days
+    // or 22 months 2 days
+    // or 96 weeks 0 days
+    // or 672 days
+    // or 16,128 hours
+    // or 967,680 minutes
+     getDiff(Diff)();
+
+    </script>
+</body>
+</html>
