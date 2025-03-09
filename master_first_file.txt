@@ -1,0 +1,9 @@
+Hello, this is first line of master branch.
+
+Hello, this is second line of master branch.
+
+Hello, this is third line of master branch.
+
+Hello, this is fourth line of master branch.
+
+Hello, this is fifth line of master branch.
